@@ -18,11 +18,13 @@ class CaptureEngine:
         resolution: tuple[int, int] = (1280, 720),
         retry_count: int = 3,
         retry_delay_seconds: float = 1.0,
+        onion_opacity: float = 0.30,
     ) -> None:
         self.webcam_index = webcam_index
         self.resolution = resolution
         self.retry_count = retry_count
         self.retry_delay_seconds = retry_delay_seconds
+        self.onion_opacity = onion_opacity
         self._cap: cv2.VideoCapture | None = None
         self._last_frame: np.ndarray | None = None
 
@@ -54,17 +56,28 @@ class CaptureEngine:
         ret, frame = self._cap.read()
         if not ret or frame is None:
             raise CaptureError("Failed to read frame from webcam")
+        # IMPORTANT: store a RAW copy as last_frame for next onion skin,
+        # but return the RAW frame (no blending) for saving to disk.
         self._last_frame = frame.copy()
         return frame
 
     def get_live_preview(self) -> np.ndarray | None:
-        """Read a frame for preview. Onion skin added in T2.2."""
         if self._cap is None:
             return None
-        ret, frame = self._cap.read()
-        if not ret or frame is None:
+        ret, current = self._cap.read()
+        if not ret or current is None:
             return None
-        return frame
+        if self._last_frame is None:
+            return current
+        return cv2.addWeighted(
+            current, 1.0 - self.onion_opacity,
+            self._last_frame, self.onion_opacity,
+            0.0,
+        )
+
+    def set_last_frame(self, frame: np.ndarray | None) -> None:
+        """Used after UNDO to reset onion skin source to the previous saved frame."""
+        self._last_frame = frame.copy() if frame is not None else None
 
     def reset(self) -> None:
         self._last_frame = None
