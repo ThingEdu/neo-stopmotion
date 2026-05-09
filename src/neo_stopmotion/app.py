@@ -7,6 +7,8 @@ from loguru import logger
 
 from neo_stopmotion.config.settings import load_settings
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
+from neo_stopmotion.services.app_controller import AppController
+from neo_stopmotion.services.session_service import SessionService
 from neo_stopmotion.ui.image_provider import PreviewImageProvider
 from neo_stopmotion.ui.qml_loader import find_qml_root, main_qml_path
 from neo_stopmotion.utils.logging_config import configure_logging
@@ -38,9 +40,27 @@ def run() -> int:
         logger.error(f"Webcam init failed: {e}")
         bus.webcam_error.emit(str(e))
 
+    # Resolve a writable projects directory. Spec default is /home/maker/projects
+    # (NEO One Linux). On macOS dev that path isn't writable, so fall back to
+    # ~/neostopmotion_sessions/.
+    projects_dir = Path(settings.storage.projects_dir).expanduser()
+    if not projects_dir.exists():
+        try:
+            projects_dir.mkdir(parents=True, exist_ok=True)
+        except (PermissionError, OSError):
+            projects_dir = Path.home() / "neostopmotion_sessions"
+            projects_dir.mkdir(parents=True, exist_ok=True)
+            logger.warning(f"Falling back to {projects_dir} (default not writable)")
+    session = SessionService(
+        projects_dir=projects_dir,
+        fps_playback=settings.export.playback_fps,
+    )
+    controller = AppController(capture=capture, session=session)
+
     engine = QQmlApplicationEngine()
     engine.addImageProvider("preview", PreviewImageProvider(capture))
     engine.addImportPath(str(find_qml_root()))
+    engine.rootContext().setContextProperty("appController", controller)
     engine.load(QUrl.fromLocalFile(str(main_qml_path())))
 
     if not engine.rootObjects():

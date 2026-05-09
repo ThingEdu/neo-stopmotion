@@ -17,6 +17,20 @@ ApplicationWindow {
         id: stack
         anchors.fill: parent
         initialItem: splashComponent
+        focus: true
+
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Space) {
+                appController.handle_uart_command("SHOOT")
+                event.accepted = true
+            } else if (event.key === Qt.Key_Z) {
+                appController.handle_uart_command("UNDO")
+                event.accepted = true
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                appController.handle_uart_command("EXPORT")
+                event.accepted = true
+            }
+        }
     }
 
     Component {
@@ -29,5 +43,12 @@ ApplicationWindow {
     Component {
         id: capturePageComponent
         Pages.CapturePage { }
+    }
+
+    Connections {
+        target: appController
+        function onFrameCountChanged(n) {
+            N.AppState.frameCount = n
+        }
     }
 }
