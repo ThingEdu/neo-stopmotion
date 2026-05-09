@@ -1,0 +1,1 @@
+"""Configuration — TOML loader + defaults."""
