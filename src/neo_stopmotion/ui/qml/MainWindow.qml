@@ -1,23 +1,46 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
+import "singletons" as N
+import "pages" as Pages
 
 ApplicationWindow {
     id: root
     width: 1280
     height: 720
     visible: true
+    visibility: Window.Windowed
     title: "NeoStopMotion — Trạm 6"
+    color: N.NeoConstants.background
 
-    Rectangle {
+    StackView {
+        id: stack
         anchors.fill: parent
-        color: "#FFF8E1"
+        initialItem: splashComponent
+    }
 
-        Text {
-            anchors.centerIn: parent
-            text: "Chào Trạm 6 — Làm Phim Hoạt Hình"
-            font.pixelSize: 36
-            color: "#FF7043"
+    Component {
+        id: splashComponent
+        Pages.SplashScreen {
+            onFinished: {
+                stack.replace(capturePlaceholder)
+            }
+        }
+    }
+
+    Component {
+        id: capturePlaceholder
+        Item {
+            Rectangle {
+                anchors.fill: parent
+                color: N.NeoConstants.background
+                Text {
+                    anchors.centerIn: parent
+                    text: "CapturePage (placeholder)"
+                    font.pixelSize: N.NeoConstants.fontTitle
+                    color: N.NeoConstants.primary
+                }
+            }
         }
     }
 }
