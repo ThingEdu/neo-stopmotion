@@ -22,25 +22,12 @@ ApplicationWindow {
     Component {
         id: splashComponent
         Pages.SplashScreen {
-            onFinished: {
-                stack.replace(capturePlaceholder)
-            }
+            onFinished: stack.replace(capturePageComponent)
         }
     }
 
     Component {
-        id: capturePlaceholder
-        Item {
-            Rectangle {
-                anchors.fill: parent
-                color: N.NeoConstants.background
-                Text {
-                    anchors.centerIn: parent
-                    text: "CapturePage (placeholder)"
-                    font.pixelSize: N.NeoConstants.fontTitle
-                    color: N.NeoConstants.primary
-                }
-            }
-        }
+        id: capturePageComponent
+        Pages.CapturePage { }
     }
 }
