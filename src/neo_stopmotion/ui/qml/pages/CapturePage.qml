@@ -19,29 +19,37 @@ Item {
         anchors.margins: N.NeoConstants.spacingL
         spacing: N.NeoConstants.spacingM
 
-        // Header with logo
-        RowLayout {
+        // Header — 2 lines, balanced (matches Splash style)
+        ColumnLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: N.NeoConstants.spacingM
+            spacing: N.NeoConstants.spacingS
 
-            Image {
-                Layout.preferredWidth: 56
-                Layout.preferredHeight: 56
-                source: resourcesUrl + "/images/maker_viet_logo.png"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
+            // Line 1: logo + big title
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: N.NeoConstants.spacingM
+
+                Image {
+                    Layout.preferredWidth: 80
+                    Layout.preferredHeight: 80
+                    source: resourcesUrl + "/images/maker_viet_logo.png"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                }
+
+                Text {
+                    text: "TRẠM LÀM PHIM HOẠT HÌNH"
+                    font.pixelSize: Math.round(N.NeoConstants.fontTitle * 1.25)
+                    font.bold: true
+                    color: N.NeoConstants.primary
+                }
             }
 
+            // Line 2: subtitle (same em-dash format as Splash)
             Text {
-                text: "TRẠM LÀM PHIM HOẠT HÌNH"
-                font.pixelSize: N.NeoConstants.fontTitle
-                font.bold: true
-                color: N.NeoConstants.primary
-            }
-
-            Text {
-                text: "•  NEO One — ThingEdu"
-                font.pixelSize: N.NeoConstants.fontCaption
+                Layout.alignment: Qt.AlignHCenter
+                text: "NEO One — ThingEdu"
+                font.pixelSize: N.NeoConstants.fontBody
                 color: N.NeoConstants.textSecondary
             }
         }
