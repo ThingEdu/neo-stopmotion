@@ -12,6 +12,8 @@ from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
 from neo_stopmotion.core.cloud_uploader import CloudUploader
 from neo_stopmotion.core.synthetic_capture import SyntheticCaptureEngine
 from neo_stopmotion.core.video_exporter import VideoExporter
+from neo_stopmotion.hardware.uart_listener import UARTListener
+from neo_stopmotion.hardware.uart_simulator import UARTSimulator
 from neo_stopmotion.services.app_controller import AppController
 from neo_stopmotion.services.export_service import ExportService
 from neo_stopmotion.services.session_service import SessionService
@@ -148,6 +150,21 @@ def run() -> int:
         export_service=export_service,
         min_frames=settings.export.min_frames,
     )
+
+    uart_mode = settings.uart.port
+    if uart_mode == "simulator":
+        uart = UARTSimulator()
+        uart.start()
+        logger.info("UART: simulator mode (keyboard only)")
+    else:
+        uart = UARTListener(
+            port=None if uart_mode == "auto" else uart_mode,
+            baudrate=settings.uart.baudrate,
+            reconnect_interval_seconds=settings.uart.reconnect_interval_seconds,
+        )
+        uart.start()
+        logger.info(f"UART: hardware listener (port={uart.port or 'searching...'})")
+    app.aboutToQuit.connect(uart.stop)
 
     bridge = _SignalBusBridge(bus)
 
