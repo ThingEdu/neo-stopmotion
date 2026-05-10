@@ -11,17 +11,17 @@ Rectangle {
         spacing: N.NeoConstants.spacingL
 
         Text {
-            text: "🔴 Bấm: chụp 1 frame"
+            text: "📷 Nút xanh / phím Space: chụp 1 ảnh"
             font.pixelSize: N.NeoConstants.fontCaption
             color: N.NeoConstants.textPrimary
         }
         Text {
-            text: "⏱️ Giữ 1s: xóa frame cuối"
+            text: "↩️ Phím Z: xoá ảnh cuối"
             font.pixelSize: N.NeoConstants.fontCaption
             color: N.NeoConstants.textPrimary
         }
         Text {
-            text: "🎬 Giữ 3s: tạo phim"
+            text: "🎬 Nút đỏ / phím Enter: tạo phim"
             font.pixelSize: N.NeoConstants.fontCaption
             color: N.NeoConstants.textPrimary
         }

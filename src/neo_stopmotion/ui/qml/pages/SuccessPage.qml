@@ -52,7 +52,7 @@ Item {
 
         Text {
             Layout.alignment: Qt.AlignHCenter
-            text: "🎉 Phim của con đã xong!"
+            text: "🎉 Phim của bạn đã xong!"
             font.pixelSize: N.NeoConstants.fontTitle
             font.bold: true
             color: N.NeoConstants.success
@@ -96,7 +96,7 @@ Item {
 
                 Text {
                     Layout.alignment: Qt.AlignHCenter
-                    text: root.qrPath !== "" ? "📱 Phụ huynh quét mã" : "💾 Phim đã lưu trên máy"
+                    text: root.qrPath !== "" ? "📱 Mời bạn quét mã" : "💾 Phim đã lưu trên máy"
                     font.pixelSize: N.NeoConstants.fontBody
                     font.bold: true
                     color: N.NeoConstants.textPrimary
@@ -150,7 +150,7 @@ Item {
             spacing: N.NeoConstants.spacingL
 
             Text {
-                text: "💡 Bấm Space (hoặc IO1 ThingBot) để làm phim mới ngay"
+                text: "💡 Mời bạn bấm nút để làm lại phim"
                 font.pixelSize: N.NeoConstants.fontCaption
                 color: N.NeoConstants.warning
             }
