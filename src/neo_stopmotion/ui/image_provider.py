@@ -14,7 +14,7 @@ class PreviewImageProvider(QQuickImageProvider):
         super().__init__(QQuickImageProvider.ImageType.Image)
         self._capture = capture_engine
 
-    def requestImage(self, id: str, requestedSize: QSize, size: QSize) -> tuple[QImage, QSize]:
+    def requestImage(self, id: str, requestedSize: QSize) -> tuple[QImage, QSize]:
         frame = self._capture.get_live_preview()
         qimg = cv_to_qimage(frame)
         return qimg, qimg.size()
