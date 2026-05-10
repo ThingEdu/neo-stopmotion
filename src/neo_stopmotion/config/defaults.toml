@@ -1,0 +1,48 @@
+[app]
+name = "NeoStopMotion"
+version = "1.0.0"
+language = "vi"
+debug = false
+
+[capture]
+webcam_index = 0
+resolution_width = 1280
+resolution_height = 720
+preview_fps = 30
+onion_opacity = 0.30
+auto_retry_count = 3
+
+[uart]
+port = "auto"
+baudrate = 115200
+reconnect_interval_seconds = 2
+keyboard_fallback = true
+
+[export]
+playback_fps = 10
+min_frames = 5
+max_frames = 100
+mp4_codec = "libx264"
+mp4_pix_fmt = "yuv420p"
+gif_scale_width = 640
+ffmpeg_binary = "ffmpeg"
+
+[storage]
+projects_dir = "/home/maker/projects"
+max_sessions = 50
+auto_cleanup_threshold_mb = 100
+
+[server]
+http_port = 8000
+qr_size = 400
+
+[ui]
+fullscreen = false
+window_width = 1920
+window_height = 1080
+font_family = "Be Vietnam Pro"
+sound_enabled = true
+flash_on_capture = true
+show_countdown = true
+show_thumbnail_strip = true
+ask_title_before_export = true
