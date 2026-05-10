@@ -1,7 +1,7 @@
 [project]
 name = "neo-stopmotion"
-version = "0.1.0"
-description = "Stop-motion studio cho Trạm 6 Làng Maker @ FPT Shop"
+version = "1.0.0"
+description = "Stop-motion studio — NEO One × ThingEdu × Maker Việt"
 authors = [{name = "Maker Việt × Dế Foundation"}]
 license = {text = "MIT"}
 readme = "README.md"
