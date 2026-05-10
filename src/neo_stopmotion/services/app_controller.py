@@ -27,7 +27,12 @@ class AppController(QObject):
         self._min_frames = min_frames
         self._bus = SignalBus.instance()
         self._frame_count = 0
+        self._post_export = False  # True when on SuccessPage
         self._bus.uart_command_received.connect(self.handle_uart_command)
+        self._bus.export_completed.connect(self._on_export_completed)
+
+    def _on_export_completed(self, _payload: dict) -> None:
+        self._post_export = True
 
     @pyqtProperty(int, notify=frameCountChanged)
     def frameCount(self) -> int:
@@ -51,6 +56,11 @@ class AppController(QObject):
             logger.warning(f"Unknown UART cmd: {cmd}")
 
     def _do_shoot(self) -> None:
+        # On SuccessPage: SHOOT means "I want to make another film".
+        # Auto-reset and capture the first frame of a new session.
+        if self._post_export:
+            logger.info("SHOOT after export — auto-resetting session for new film")
+            self.reset_session()
         try:
             frame = self._capture.capture_frame()
         except CaptureError as e:
@@ -88,9 +98,14 @@ class AppController(QObject):
 
     @pyqtSlot()
     def reset_session(self) -> None:
-        """Start a fresh session (called from SuccessPage 'Quay lại' button)."""
+        """Start a fresh session.
+
+        Called from SuccessPage 'Quay lại' button OR auto-triggered when SHOOT
+        arrives while we're on SuccessPage (post_export=True).
+        """
         self._session.reset()
         self._capture.reset()
         self._frame_count = 0
+        self._post_export = False
         self.frameCountChanged.emit(0)
         self._bus.session_reset.emit()

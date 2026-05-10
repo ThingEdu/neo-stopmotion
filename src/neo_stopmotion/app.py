@@ -131,12 +131,14 @@ def run() -> int:
     )
 
     ffmpeg_bin = _resolve_ffmpeg(settings.export.ffmpeg_binary)
+    watermark = Path(__file__).parent / "resources" / "images" / "maker_viet_logo.png"
     exporter = VideoExporter(
         fps=settings.export.playback_fps,
         ffmpeg=ffmpeg_bin,
         codec=settings.export.mp4_codec,
         pix_fmt=settings.export.mp4_pix_fmt,
         gif_scale_width=settings.export.gif_scale_width,
+        watermark_path=watermark if watermark.exists() else None,
     )
     cloud_enabled = os.environ.get("NEO_STOPMOTION_CLOUD", "1").lower() not in ("0", "false", "no", "off")
     uploader = CloudUploader() if cloud_enabled else None

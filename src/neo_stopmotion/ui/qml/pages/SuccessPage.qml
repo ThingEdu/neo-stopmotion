@@ -21,6 +21,35 @@ Item {
         anchors.margins: N.NeoConstants.spacingL
         spacing: N.NeoConstants.spacingM
 
+        // Branded header
+        RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: N.NeoConstants.spacingM
+
+            Image {
+                Layout.preferredWidth: 64
+                Layout.preferredHeight: 64
+                source: resourcesUrl + "/images/maker_viet_logo.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
+            ColumnLayout {
+                spacing: 2
+                Text {
+                    text: "Maker Việt × ThingEdu"
+                    font.pixelSize: N.NeoConstants.fontBody
+                    font.bold: true
+                    color: N.NeoConstants.primary
+                }
+                Text {
+                    text: "NEO One — Trạm Làm Phim"
+                    font.pixelSize: N.NeoConstants.fontCaption
+                    color: N.NeoConstants.textSecondary
+                }
+            }
+        }
+
         Text {
             Layout.alignment: Qt.AlignHCenter
             text: "🎉 Phim của con đã xong!"
@@ -106,7 +135,7 @@ Item {
                 Text {
                     Layout.alignment: Qt.AlignHCenter
                     Layout.preferredWidth: 400
-                    text: "MP4 lưu tại: " + root.mp4Path
+                    text: "Phim lưu tại: " + root.mp4Path
                     font.pixelSize: 12
                     color: N.NeoConstants.textSecondary
                     horizontalAlignment: Text.AlignHCenter
@@ -115,15 +144,26 @@ Item {
             }
         }
 
-        Button {
+        // Footer hint + reset button
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: N.NeoConstants.buttonHeight + 8
-            Layout.preferredWidth: 360
-            text: "🔁  Quay lại làm phim mới"
-            font.pixelSize: N.NeoConstants.fontButton
-            font.bold: true
-            highlighted: true
-            onClicked: appController.reset_session()
+            spacing: N.NeoConstants.spacingL
+
+            Text {
+                text: "💡 Bấm Space (hoặc IO1 ThingBot) để làm phim mới ngay"
+                font.pixelSize: N.NeoConstants.fontCaption
+                color: N.NeoConstants.warning
+            }
+
+            Button {
+                Layout.preferredHeight: N.NeoConstants.buttonHeight
+                Layout.preferredWidth: 280
+                text: "🔁  Làm phim mới"
+                font.pixelSize: N.NeoConstants.fontButton
+                font.bold: true
+                highlighted: true
+                onClicked: appController.reset_session()
+            }
         }
     }
 }
