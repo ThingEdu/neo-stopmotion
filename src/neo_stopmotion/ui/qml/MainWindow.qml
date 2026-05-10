@@ -79,10 +79,12 @@ ApplicationWindow {
                 }
             }
         }
-        function onExportCompleted(mp4Path, gifPath) {
+        function onExportCompleted(mp4Path, gifPath, shareUrl, qrPath) {
             stack.replace(successPageComponent, {
                 mp4Path: mp4Path,
                 gifPath: gifPath,
+                shareUrl: shareUrl,
+                qrPath: qrPath,
             })
         }
         function onExportFailed(msg) {

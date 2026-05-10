@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "../singletons" as N
 
 Item {
@@ -10,18 +11,21 @@ Item {
         anchors.fill: parent
         color: N.NeoConstants.background
 
-        Column {
+        ColumnLayout {
             anchors.centerIn: parent
             spacing: N.NeoConstants.spacingL
 
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "🎬"
-                font.pixelSize: 120
+            Image {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 220
+                Layout.preferredHeight: 220
+                source: resourcesUrl + "/images/maker_viet_logo.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
             }
 
             Text {
-                anchors.horizontalCenter: parent.horizontalCenter
+                Layout.alignment: Qt.AlignHCenter
                 text: "Trạm Làm Phim Hoạt Hình"
                 font.pixelSize: N.NeoConstants.fontTitle
                 font.bold: true
@@ -29,8 +33,8 @@ Item {
             }
 
             Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: "Làng Maker @ FPT Shop"
+                Layout.alignment: Qt.AlignHCenter
+                text: "NEO One — ThingEdu"
                 font.pixelSize: N.NeoConstants.fontBody
                 color: N.NeoConstants.textSecondary
             }

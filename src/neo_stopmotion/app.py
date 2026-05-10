@@ -9,6 +9,7 @@ from loguru import logger
 
 from neo_stopmotion.config.settings import load_settings
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
+from neo_stopmotion.core.cloud_uploader import CloudUploader
 from neo_stopmotion.core.synthetic_capture import SyntheticCaptureEngine
 from neo_stopmotion.core.video_exporter import VideoExporter
 from neo_stopmotion.services.app_controller import AppController
@@ -32,7 +33,7 @@ class _SignalBusBridge(QObject):
     sessionReset = pyqtSignal()
     exportStarted = pyqtSignal()
     exportProgress = pyqtSignal(float)
-    exportCompleted = pyqtSignal(str, str)  # mp4_path, gif_path
+    exportCompleted = pyqtSignal(str, str, str, str)  # mp4_path, gif_path, share_url, qr_path
     exportFailed = pyqtSignal(str)
     statusMessage = pyqtSignal(str, str)
 
@@ -52,7 +53,12 @@ class _SignalBusBridge(QObject):
         bus.status_message.connect(self.statusMessage)
 
     def _on_export_completed(self, payload: dict) -> None:
-        self.exportCompleted.emit(payload.get("mp4_path", ""), payload.get("gif_path", ""))
+        self.exportCompleted.emit(
+            payload.get("mp4_path", ""),
+            payload.get("gif_path", ""),
+            payload.get("share_url", ""),
+            payload.get("qr_path", ""),
+        )
 
 
 def _resolve_ffmpeg(configured: str) -> str:
@@ -130,8 +136,11 @@ def run() -> int:
         pix_fmt=settings.export.mp4_pix_fmt,
         gif_scale_width=settings.export.gif_scale_width,
     )
-    export_service = ExportService(exporter)
+    cloud_enabled = os.environ.get("NEO_STOPMOTION_CLOUD", "1").lower() not in ("0", "false", "no", "off")
+    uploader = CloudUploader() if cloud_enabled else None
+    export_service = ExportService(exporter, uploader)
     logger.info(f"Using ffmpeg: {ffmpeg_bin}")
+    logger.info(f"Cloud share: {'enabled (catbox.moe)' if cloud_enabled else 'disabled'}")
 
     controller = AppController(
         capture=capture,
@@ -142,11 +151,15 @@ def run() -> int:
 
     bridge = _SignalBusBridge(bus)
 
+    resources_dir = Path(__file__).parent / "resources"
+    resources_url = QUrl.fromLocalFile(str(resources_dir)).toString()
+
     engine = QQmlApplicationEngine()
     engine.addImageProvider("preview", PreviewImageProvider(capture))
     engine.addImportPath(str(find_qml_root()))
     engine.rootContext().setContextProperty("appController", controller)
     engine.rootContext().setContextProperty("signalBusBridge", bridge)
+    engine.rootContext().setContextProperty("resourcesUrl", resources_url)
     engine.load(QUrl.fromLocalFile(str(main_qml_path())))
 
     if not engine.rootObjects():

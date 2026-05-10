@@ -19,13 +19,31 @@ Item {
         anchors.margins: N.NeoConstants.spacingL
         spacing: N.NeoConstants.spacingM
 
-        // Header
-        Text {
+        // Header with logo
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            text: "TRẠM LÀM PHIM HOẠT HÌNH"
-            font.pixelSize: N.NeoConstants.fontTitle
-            font.bold: true
-            color: N.NeoConstants.primary
+            spacing: N.NeoConstants.spacingM
+
+            Image {
+                Layout.preferredWidth: 56
+                Layout.preferredHeight: 56
+                source: resourcesUrl + "/images/maker_viet_logo.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+            }
+
+            Text {
+                text: "TRẠM LÀM PHIM HOẠT HÌNH"
+                font.pixelSize: N.NeoConstants.fontTitle
+                font.bold: true
+                color: N.NeoConstants.primary
+            }
+
+            Text {
+                text: "•  NEO One — ThingEdu"
+                font.pixelSize: N.NeoConstants.fontCaption
+                color: N.NeoConstants.textSecondary
+            }
         }
 
         // Preview + Counter row
