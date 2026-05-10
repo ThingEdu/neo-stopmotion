@@ -3,19 +3,28 @@ from PyQt6.QtCore import QObject, pyqtSlot, pyqtProperty, pyqtSignal
 from loguru import logger
 
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
+from neo_stopmotion.services.export_service import ExportService
 from neo_stopmotion.services.session_service import SessionService
 from neo_stopmotion.utils.signal_bus import SignalBus
 
 
 class AppController(QObject):
-    """Root QObject exposed to QML — facade over capture+session."""
+    """Root QObject exposed to QML — facade over capture+session+export."""
 
     frameCountChanged = pyqtSignal(int)
 
-    def __init__(self, capture: CaptureEngine, session: SessionService) -> None:
+    def __init__(
+        self,
+        capture: CaptureEngine,
+        session: SessionService,
+        export_service: ExportService | None = None,
+        min_frames: int = 5,
+    ) -> None:
         super().__init__()
         self._capture = capture
         self._session = session
+        self._export_service = export_service
+        self._min_frames = min_frames
         self._bus = SignalBus.instance()
         self._frame_count = 0
         self._bus.uart_command_received.connect(self.handle_uart_command)
@@ -57,7 +66,6 @@ class AppController(QObject):
         ok = self._session.frame_manager.undo_last_frame()
         if not ok:
             return
-        # Reload the new "last frame" so onion skin uses the correct source
         new_count = self._session.frame_manager.frame_count
         prev = self._session.frame_manager.load_frame(new_count) if new_count > 0 else None
         self._capture.set_last_frame(prev)
@@ -66,6 +74,23 @@ class AppController(QObject):
         self._bus.frame_undone.emit(new_count)
 
     def _do_export(self) -> None:
-        # Filled in T4.3
-        logger.info("Export requested (stub)")
-        self._bus.export_started.emit()
+        fm = self._session.frame_manager
+        if fm.frame_count < self._min_frames:
+            self._bus.status_message.emit(
+                "warning",
+                f"Cần ít nhất {self._min_frames} frame — con chụp thêm vài tấm nữa nha!",
+            )
+            return
+        if self._export_service is None:
+            logger.warning("Export requested but ExportService not configured")
+            return
+        self._export_service.start_export(fm)
+
+    @pyqtSlot()
+    def reset_session(self) -> None:
+        """Start a fresh session (called from SuccessPage 'Quay lại' button)."""
+        self._session.reset()
+        self._capture.reset()
+        self._frame_count = 0
+        self.frameCountChanged.emit(0)
+        self._bus.session_reset.emit()
