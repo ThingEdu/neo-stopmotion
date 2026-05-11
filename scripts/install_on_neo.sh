@@ -6,7 +6,7 @@
 #
 # Usage:
 #   Local:  bash scripts/install_on_neo.sh
-#   Remote: curl -sSL https://raw.githubusercontent.com/lgthevinh/NeoStopMotion/main/scripts/install_on_neo.sh | bash
+#   Remote: curl -sSL https://raw.githubusercontent.com/makerviet/NeoStopMotion/main/scripts/install_on_neo.sh | bash
 #
 # Options:
 #   --no-desktop   Skip .desktop file and icon installation
@@ -23,8 +23,8 @@ ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
 ICON_FILE="$ICON_DIR/neo-stopmotion.png"
 PYPI_PACKAGE="neo-stopmotion"
 PYTHON_MODULE="neo_stopmotion"
-GITHUB_REPO="https://github.com/lgthevinh/NeoStopMotion.git"
-RAW_INSTALL_URL="https://raw.githubusercontent.com/lgthevinh/NeoStopMotion/main/scripts/install_on_neo.sh"
+GITHUB_REPO="https://github.com/makerviet/NeoStopMotion.git"
+RAW_INSTALL_URL="https://raw.githubusercontent.com/makerviet/NeoStopMotion/main/scripts/install_on_neo.sh"
 
 # -- Parse arguments -----------------------------------------------------------
 SKIP_DESKTOP=false
@@ -293,7 +293,7 @@ except Exception:
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=NeoStopMotion
+Name=NEO Stopmotion
 GenericName=Stop-motion Studio
 Comment=Stop-motion studio for NEO One and ThingBot
 Exec=$exec_path
