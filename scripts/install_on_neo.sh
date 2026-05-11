@@ -203,6 +203,7 @@ install_system_deps() {
         qml6-module-qtquick-layouts \
         qml6-module-qtquick-window \
         qml6-module-qtquick-templates \
+        qml6-module-qtquick-templates2 \
         qml6-module-qtqml \
         qml6-module-qtqml-workerscript \
         qml6-module-qtmultimedia
