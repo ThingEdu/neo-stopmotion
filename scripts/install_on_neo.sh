@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # NeoStopMotion Installer
-# First-time installation script for the NeoStopMotion stop-motion studio.
+# First-time installation script for NeoStopMotion stop-motion studio.
 # Handles ARM (Armbian/Raspberry Pi) and x86 platforms automatically.
 #
 # Usage:
@@ -17,11 +17,10 @@ set -euo pipefail
 # -- Configuration ------------------------------------------------------------
 APP_NAME="neo-stopmotion"
 DISPLAY_NAME="NeoStopMotion"
-BIN_NAME="neo-stopmotion"
-BIN_LINK="$HOME/.local/bin/$BIN_NAME"
-DESKTOP_FILE="$HOME/.local/share/applications/$APP_NAME.desktop"
+BIN_LINK="$HOME/.local/bin/neo-stopmotion"
+DESKTOP_FILE="$HOME/.local/share/applications/neo-stopmotion.desktop"
 ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
-ICON_FILE="$ICON_DIR/$APP_NAME.png"
+ICON_FILE="$ICON_DIR/neo-stopmotion.png"
 PYPI_PACKAGE="neo-stopmotion"
 PYTHON_MODULE="neo_stopmotion"
 GITHUB_REPO="https://github.com/makerviet/NeoStopMotion.git"
@@ -59,20 +58,6 @@ detect_arch() {
         x86_64|i686|i386)     echo "x86" ;;
         *)                    echo "unknown" ;;
     esac
-}
-
-has_apt() {
-    command -v apt-get &>/dev/null
-}
-
-apt_install_required() {
-    if ! has_apt; then
-        warn "apt-get not found. Skipping system dependency installation."
-        return
-    fi
-
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq "$@"
 }
 
 # pip install wrapper that adds --break-system-packages when needed.
@@ -117,7 +102,7 @@ do_uninstall() {
 
     if [ -L "$BIN_LINK" ] || [ -f "$BIN_LINK" ]; then
         rm -f "$BIN_LINK"
-        info "Removed launcher: $BIN_LINK"
+        info "Removed symlink: $BIN_LINK"
     fi
 
     if [ -f "$DESKTOP_FILE" ]; then
@@ -157,127 +142,124 @@ info "Python $PYTHON_VERSION found."
 
 # -- Step 1: Install system dependencies --------------------------------------
 install_system_deps() {
-    if ! has_apt; then
-        error "apt-get is required for this installer because Qt6/PyQt6 and OpenCV are installed from apt."
-        exit 1
-    fi
-
-    info "Installing required system, Qt6/PyQt6, and OpenCV packages..."
-    apt_install_required \
-        python3-pip \
-        python3-numpy \
-        python3-opencv \
-        python3-pyqt6 \
-        python3-pyqt6.qt \
-        python3-pyqt6.qtquick \
-        python3-pyqt6.qtmultimedia \
-        python3-pyqt6.qtqml \
-        git \
-        ffmpeg \
-        v4l-utils \
-        libegl1 \
-        libgl1 \
-        libglib2.0-0 \
-        libxkbcommon-x11-0 \
-        libxcb-cursor0 \
-        libxcb-xinerama0 \
-        qt6-base-dev \
-        qt6-qpa-plugins \
-        qt6-wayland \
-        qml6-module-qtquick \
-        qml6-module-qtquick-controls \
-        qml6-module-qtquick-layouts \
-        qml6-module-qtquick-window \
-        qml6-module-qtquick-templates \
-        qml6-module-qtqml \
-        qml6-module-qtqml-workerscript \
-        qml6-module-qtmultimedia
-
-    if ! python_has_pyqt6 >/dev/null; then
-        error "PyQt6 with QtQml/QtQuick is not importable after apt installation."
-        exit 1
-    fi
-
-    if ! python_has_opencv >/dev/null; then
-        error "OpenCV (cv2) is not importable after apt installation."
-        exit 1
+    if [ "$ARCH" = "arm" ]; then
+        info "ARM detected - installing system binary dependencies..."
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq \
+            python3-pip \
+            python3-numpy \
+            python3-opencv \
+            python3-pyqt6 \
+            python3-pyqt6.qt \
+            python3-pyqt6.qtquick \
+            python3-pyqt6.qtmultimedia \
+            python3-pyqt6.qtqml \
+            git \
+            ffmpeg \
+            v4l-utils \
+            libegl1 \
+            libgl1 \
+            libglib2.0-0 \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libxcb-xinerama0 \
+            qt6-qpa-plugins \
+            qt6-wayland \
+            qml6-module-qtquick \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-layouts \
+            qml6-module-qtquick-window \
+            qml6-module-qtquick-templates \
+            qml6-module-qtqml-workerscript \
+            qml6-module-qtmultimedia \
+            2>/dev/null || true
+    elif [ "$ARCH" = "x86" ]; then
+        info "x86 detected - PyQt6 and OpenCV will be installed via pip."
+        if command -v apt-get &>/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg git python3-pip v4l-utils 2>/dev/null || true
+        fi
+    else
+        warn "Unknown architecture '$(uname -m)'. Proceeding with pip-based install."
     fi
 }
 
 install_system_deps
 
-# -- Step 2: Install Python dependencies --------------------------------------
-install_python_deps() {
-    info "Upgrading Python packaging tools..."
-    pip_install --user --upgrade pip setuptools wheel
-
-    if [ "$ARCH" = "arm" ]; then
-        info "ARM detected. Using apt-provided Qt6/PyQt6 and OpenCV."
-        info "Installing remaining non-Qt, non-OpenCV Python dependencies..."
-        pip_install --user --prefer-binary \
-            "pyserial>=3.5" \
-            "qrcode[pil]>=7.4" \
-            "Pillow>=10.0.0" \
-            "loguru>=0.7.0" \
-            "tomli>=2.0.1; python_version<'3.11'"
-    else
-        info "x86 detected. Using apt-provided Qt6/PyQt6 and OpenCV."
-        info "Installing remaining non-Qt, non-OpenCV Python dependencies..."
-        pip_install --user --prefer-binary \
-            "pyserial>=3.5" \
-            "qrcode[pil]>=7.4" \
-            "Pillow>=10.0.0" \
-            "loguru>=0.7.0" \
-            "tomli>=2.0.1; python_version<'3.11'"
-    fi
-
-    if ! python_has_pyqt6 >/dev/null; then
-        error "PyQt6 with QtQml/QtQuick is still not importable after dependency installation."
-        exit 1
-    fi
-}
-
-install_python_deps
-
-# -- Step 3: Install package ---------------------------------------------------
+# -- Step 2: Install package --------------------------------------------------
 info "Installing $DISPLAY_NAME..."
 
-if ! pip_install --user --no-deps --quiet "$PYPI_PACKAGE" 2>/dev/null; then
-    info "PyPI install failed. Installing from GitHub source..."
-    require_cmd git
-    pip_install --user --no-deps "git+${GITHUB_REPO}"
+if [ "$ARCH" = "arm" ]; then
+    # ARM: avoid rebuilding PyQt6/OpenCV from source - use system apt packages.
+    info "ARM detected - installing without Python package dependencies..."
+    if ! pip_install --no-deps --quiet "$PYPI_PACKAGE" 2>&1; then
+        info "PyPI install failed. Installing from GitHub source..."
+        require_cmd git
+        pip_install --no-deps "git+${GITHUB_REPO}"
+    fi
+
+    info "Installing Python dependencies excluding PyQt6, OpenCV, and numpy..."
+    pip_install --quiet \
+        "pyserial>=3.5" \
+        "qrcode[pil]>=7.4" \
+        "Pillow>=10.0.0" \
+        "loguru>=0.7.0" \
+        "tomli>=2.0.1; python_version<'3.11'"
+
+    if ! python_has_pyqt6 >/dev/null; then
+        error "PyQt6/QtQuick is not available from apt packages."
+        error "Install the PyQt6 Qt/QML packages for this Armbian release, then rerun this script."
+        exit 1
+    fi
+
+    if ! python_has_opencv >/dev/null; then
+        error "OpenCV (cv2) is not available from apt packages."
+        error "Install python3-opencv for this Armbian release, then rerun this script."
+        exit 1
+    fi
+else
+    # x86: PyQt6/OpenCV wheels are available, normal install.
+    if pip_install --quiet "$PYPI_PACKAGE" 2>&1; then
+        info "Installed from PyPI."
+    else
+        info "PyPI install failed. Installing from GitHub source..."
+        require_cmd git
+        pip_install "git+${GITHUB_REPO}"
+    fi
 fi
 
-# -- Step 4: Verify installation ----------------------------------------------
-NEO_BIN="$(python3 - <<PY 2>/dev/null || true
-import os
-import sysconfig
+# -- Step 3: Verify installation ----------------------------------------------
+# pip installs scripts to ~/.local/bin on Linux
+NEO_BIN="$(python3 -c "
+import sysconfig, os
+scripts = sysconfig.get_path('scripts', 'posix_user')
+print(os.path.join(scripts, 'neo-stopmotion'))
+" 2>/dev/null || echo "$HOME/.local/bin/neo-stopmotion")"
 
-scripts = sysconfig.get_path("scripts", "posix_user")
-print(os.path.join(scripts, "$BIN_NAME"))
-PY
-)"
-
-if [ -n "$NEO_BIN" ] && [ ! -f "$NEO_BIN" ]; then
-    NEO_BIN="$(command -v "$BIN_NAME" 2>/dev/null || true)"
+if [ ! -f "$NEO_BIN" ]; then
+    # Also check if it ended up on the system path
+    NEO_BIN="$(command -v neo-stopmotion 2>/dev/null || true)"
 fi
 
 if [ -z "$NEO_BIN" ] || [ ! -f "$NEO_BIN" ]; then
-    error "Installation failed - '$BIN_NAME' binary not found."
+    error "Installation failed - 'neo-stopmotion' binary not found."
     error "Check the output above for errors."
     exit 1
 fi
 
+# Ensure symlink in ~/.local/bin
 mkdir -p "$(dirname "$BIN_LINK")"
 if [ "$NEO_BIN" != "$BIN_LINK" ]; then
     ln -sf "$NEO_BIN" "$BIN_LINK"
 fi
+info "Verified: $NEO_BIN"
 
-require_cmd ffmpeg
-info "Verified launcher: $BIN_LINK"
-info "Verified ffmpeg: $(command -v ffmpeg)"
+if ! command -v ffmpeg &>/dev/null; then
+    error "ffmpeg is required but not found."
+    exit 1
+fi
 
-# -- Step 5: Desktop integration ----------------------------------------------
+# -- Step 4: Desktop integration ----------------------------------------------
 install_desktop_entry() {
     if [ "$SKIP_DESKTOP" = true ]; then
         info "Skipping desktop integration (--no-desktop)."
@@ -285,20 +267,19 @@ install_desktop_entry() {
     fi
 
     local exec_path="$BIN_LINK"
-    local icon_name="$APP_NAME"
+    local icon_name="neo-stopmotion"
+
+    # Try to find icon from installed package
     local pkg_icon
-
-    pkg_icon="$(python3 - <<PY 2>/dev/null || true
+    pkg_icon="$(python3 -c "
 import importlib.resources
-
 try:
-    ref = importlib.resources.files("$PYTHON_MODULE") / "resources" / "images" / "maker_viet_logo.png"
-    with importlib.resources.as_file(ref) as path:
-        print(path)
+    ref = importlib.resources.files('neo_stopmotion') / 'resources' / 'images' / 'maker_viet_logo.png'
+    with importlib.resources.as_file(ref) as p:
+        print(p)
 except Exception:
     pass
-PY
-)"
+" 2>/dev/null || true)"
 
     if [ -n "$pkg_icon" ] && [ -f "$pkg_icon" ]; then
         mkdir -p "$ICON_DIR"
@@ -308,7 +289,7 @@ PY
     fi
 
     mkdir -p "$(dirname "$DESKTOP_FILE")"
-    tee "$DESKTOP_FILE" >/dev/null <<EOF
+    cat > "$DESKTOP_FILE" <<EOF
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -329,26 +310,24 @@ EOF
 
 install_desktop_entry
 
-# -- Step 6: Ensure ~/.local/bin is in PATH -----------------------------------
+# -- Step 5: Ensure ~/.local/bin is in PATH ------------------------------------
 ensure_path() {
     local bin_dir="$HOME/.local/bin"
-    if [[ ":$PATH:" == *":$bin_dir:"* ]]; then
-        return
-    fi
+    if [[ ":$PATH:" != *":$bin_dir:"* ]]; then
+        warn "$bin_dir is not in your PATH."
 
-    warn "$bin_dir is not in your PATH."
+        local shell_rc=""
+        case "$(basename "${SHELL:-sh}")" in
+            zsh)  shell_rc="$HOME/.zshrc" ;;
+            bash) shell_rc="$HOME/.bashrc" ;;
+            *)    shell_rc="$HOME/.profile" ;;
+        esac
 
-    local shell_rc=""
-    case "$(basename "${SHELL:-sh}")" in
-        zsh)  shell_rc="$HOME/.zshrc" ;;
-        bash) shell_rc="$HOME/.bashrc" ;;
-        *)    shell_rc="$HOME/.profile" ;;
-    esac
-
-    if [ -f "$shell_rc" ] && ! grep -q 'local/bin' "$shell_rc"; then
-        printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$shell_rc"
-        info "Added $bin_dir to PATH in $shell_rc"
-        info "Run 'source $shell_rc' or open a new terminal to use '$BIN_NAME'."
+        if [ -f "$shell_rc" ] && ! grep -q 'local/bin' "$shell_rc"; then
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_rc"
+            info "Added $bin_dir to PATH in $shell_rc"
+            info "Run 'source $shell_rc' or open a new terminal to use 'neo-stopmotion'."
+        fi
     fi
 }
 
@@ -360,8 +339,7 @@ info "=========================================="
 info "  $DISPLAY_NAME installed successfully!"
 info "=========================================="
 echo ""
-echo "  Run:        $BIN_NAME"
-echo "  Launcher:   $BIN_LINK"
+echo "  Run:  neo-stopmotion"
 echo ""
 echo "  Uninstall:  curl -sSL $RAW_INSTALL_URL | bash -s -- --uninstall"
 echo ""

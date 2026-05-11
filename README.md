@@ -69,7 +69,7 @@ curl -sSL https://raw.githubusercontent.com/makerviet/NeoStopMotion/main/scripts
 neo-stopmotion
 ```
 
-Installer sẽ cài `ffmpeg`, Qt6/PyQt6 và Python OpenCV bằng apt package bắt buộc để tránh build Qt6/OpenCV từ source trên ARM.
+Installer sẽ cài `ffmpeg`, Qt6/PyQt6 và Python OpenCV bằng apt package trên ARM để tránh build Qt6/OpenCV từ source.
 
 ## ⌨️ Phím tắt / Nút
 
