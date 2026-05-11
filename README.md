@@ -65,10 +65,11 @@ NEO_STOPMOTION_AUTOSHOOT=8 NEO_STOPMOTION_AUTOEXPORT=1 \
 ### Triển khai NEO One (Linux ARM64)
 
 ```bash
-sudo bash deployment/install-armbian.sh
-sudo systemctl enable --now neostopmotion
-journalctl -u neostopmotion -f
+curl -sSL https://raw.githubusercontent.com/makerviet/NeoStopMotion/main/scripts/install_on_neo.sh | bash
+neo-stopmotion
 ```
+
+Installer sẽ cài `ffmpeg`, Qt6/PyQt6 binary packages nếu distro có sẵn, và chỉ dùng PyQt6 wheel fallback để tránh build Qt6 từ source trên ARM.
 
 ## ⌨️ Phím tắt / Nút
 
