@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 from unittest.mock import MagicMock, patch
+from neo_stopmotion.app import _open_capture
+from neo_stopmotion.config.settings import AppSettings
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
 
 
@@ -76,3 +78,22 @@ def test_capture_frame_does_not_blend(fake_frame):
         frame = eng.capture_frame()
         # captured frame must be raw (NOT blended)
         assert frame[0, 0, 0] == 128
+
+
+def test_open_capture_probes_next_index(fake_frame):
+    bad_cap = MagicMock()
+    bad_cap.isOpened.return_value = False
+    good_cap = MagicMock()
+    good_cap.isOpened.return_value = True
+    good_cap.read.return_value = (True, fake_frame)
+
+    def fake_video_capture(index):
+        return good_cap if index == 1 else bad_cap
+
+    settings = AppSettings()
+    settings.capture.auto_retry_count = 1
+    with patch("cv2.VideoCapture", side_effect=fake_video_capture):
+        eng = _open_capture(settings)
+
+    assert eng.webcam_index == 1
+    assert eng.is_open is True

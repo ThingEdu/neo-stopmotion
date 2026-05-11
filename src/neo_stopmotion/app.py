@@ -7,7 +7,7 @@ from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine
 from loguru import logger
 
-from neo_stopmotion.config.settings import load_settings
+from neo_stopmotion.config.settings import AppSettings, load_settings
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
 from neo_stopmotion.core.cloud_uploader import CloudUploader
 from neo_stopmotion.core.synthetic_capture import SyntheticCaptureEngine
@@ -76,6 +76,35 @@ def _resolve_ffmpeg(configured: str) -> str:
     return configured  # let it fail later with a clear ffmpeg error
 
 
+def _open_capture(settings: AppSettings) -> CaptureEngine:
+    """Open configured webcam, then probe nearby indexes before giving up."""
+    configured_index = settings.capture.webcam_index
+    indexes = [configured_index] + [i for i in range(6) if i != configured_index]
+    explicit_index = "NEO_STOPMOTION_WEBCAM_INDEX" in os.environ
+    last_error: CaptureError | None = None
+
+    for pos, index in enumerate(indexes):
+        retry_count = settings.capture.auto_retry_count if pos == 0 else 1
+        capture = CaptureEngine(
+            webcam_index=index,
+            resolution=(settings.capture.resolution_width, settings.capture.resolution_height),
+            onion_opacity=settings.capture.onion_opacity,
+            retry_count=retry_count,
+        )
+        try:
+            capture.open()
+            if index != configured_index:
+                logger.info(f"Using detected webcam index {index} instead of {configured_index}")
+            return capture
+        except CaptureError as e:
+            last_error = e
+            if explicit_index:
+                break
+            logger.warning(f"Webcam index {index} unavailable: {e}")
+
+    raise CaptureError("No usable webcam found") from last_error
+
+
 def run() -> int:
     settings = load_settings()
     log_dir = Path.home() / ".local" / "share" / "neostopmotion" / "logs"
@@ -97,14 +126,8 @@ def run() -> int:
         capture.open()
         bus.webcam_ready.emit()
     else:
-        capture = CaptureEngine(
-            webcam_index=settings.capture.webcam_index,
-            resolution=(settings.capture.resolution_width, settings.capture.resolution_height),
-            onion_opacity=settings.capture.onion_opacity,
-            retry_count=settings.capture.auto_retry_count,
-        )
         try:
-            capture.open()
+            capture = _open_capture(settings)
             bus.webcam_ready.emit()
         except CaptureError as e:
             logger.warning(f"Webcam unavailable ({e}); falling back to SyntheticCaptureEngine")

@@ -6,7 +6,7 @@
 #
 # Usage:
 #   Local:  bash scripts/install_on_neo.sh
-#   Remote: curl -sSL https://raw.githubusercontent.com/makerviet/NeoStopMotion/main/scripts/install_on_neo.sh | bash
+#   Remote: curl -sSL https://raw.githubusercontent.com/lgthevinh/NeoStopMotion/main/scripts/install_on_neo.sh | bash
 #
 # Options:
 #   --no-desktop   Skip .desktop file and icon installation
@@ -23,8 +23,8 @@ ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
 ICON_FILE="$ICON_DIR/neo-stopmotion.png"
 PYPI_PACKAGE="neo-stopmotion"
 PYTHON_MODULE="neo_stopmotion"
-GITHUB_REPO="https://github.com/makerviet/NeoStopMotion.git"
-RAW_INSTALL_URL="https://raw.githubusercontent.com/makerviet/NeoStopMotion/main/scripts/install_on_neo.sh"
+GITHUB_REPO="https://github.com/lgthevinh/NeoStopMotion.git"
+RAW_INSTALL_URL="https://raw.githubusercontent.com/lgthevinh/NeoStopMotion/main/scripts/install_on_neo.sh"
 
 # -- Parse arguments -----------------------------------------------------------
 SKIP_DESKTOP=false
@@ -191,13 +191,6 @@ info "Installing $DISPLAY_NAME..."
 
 if [ "$ARCH" = "arm" ]; then
     # ARM: avoid rebuilding PyQt6/OpenCV from source - use system apt packages.
-    info "ARM detected - installing without Python package dependencies..."
-    if ! pip_install --no-deps --quiet "$PYPI_PACKAGE" 2>&1; then
-        info "PyPI install failed. Installing from GitHub source..."
-        require_cmd git
-        pip_install --no-deps "git+${GITHUB_REPO}"
-    fi
-
     info "Installing Python dependencies excluding PyQt6, OpenCV, and numpy..."
     pip_install --quiet \
         "pyserial>=3.5" \
@@ -205,6 +198,13 @@ if [ "$ARCH" = "arm" ]; then
         "Pillow>=10.0.0" \
         "loguru>=0.7.0" \
         "tomli>=2.0.1; python_version<'3.11'"
+
+    info "ARM detected - installing without Python package dependencies..."
+    if ! pip_install --no-deps --quiet "$PYPI_PACKAGE" 2>&1; then
+        info "PyPI install failed. Installing from GitHub source..."
+        require_cmd git
+        pip_install --no-deps "git+${GITHUB_REPO}"
+    fi
 
     if ! python_has_pyqt6 >/dev/null; then
         error "PyQt6/QtQuick is not available from apt packages."
