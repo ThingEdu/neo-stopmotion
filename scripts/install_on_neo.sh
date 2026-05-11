@@ -75,24 +75,6 @@ apt_install_required() {
     sudo apt-get install -y -qq "$@"
 }
 
-apt_install_optional() {
-    if ! has_apt; then
-        return
-    fi
-
-    local missing=()
-    local package
-    for package in "$@"; do
-        if ! sudo apt-get install -y -qq "$package" 2>/dev/null; then
-            missing+=("$package")
-        fi
-    done
-
-    if [ "${#missing[@]}" -gt 0 ]; then
-        warn "Some optional apt packages were not available: ${missing[*]}"
-    fi
-}
-
 # pip install wrapper that adds --break-system-packages when needed.
 pip_install() {
     local bsp=""
@@ -110,16 +92,20 @@ pip_uninstall() {
     python3 -m pip uninstall -y $bsp "$@" 2>/dev/null || true
 }
 
-pip_install_binary_only() {
-    pip_install --only-binary=:all: "$@"
-}
-
 python_has_pyqt6() {
     python3 - <<'PY' 2>/dev/null
 from PyQt6.QtCore import QT_VERSION_STR
 from PyQt6.QtQml import QQmlApplicationEngine
 from PyQt6.QtQuick import QQuickWindow
 print(QT_VERSION_STR)
+PY
+}
+
+python_has_opencv() {
+    python3 - <<'PY' 2>/dev/null
+import cv2
+import numpy
+print(cv2.__version__)
 PY
 }
 
@@ -172,13 +158,20 @@ info "Python $PYTHON_VERSION found."
 # -- Step 1: Install system dependencies --------------------------------------
 install_system_deps() {
     if ! has_apt; then
-        warn "Non-apt system detected. Please install ffmpeg and Qt runtime packages manually."
-        return
+        error "apt-get is required for this installer because Qt6/PyQt6 and OpenCV are installed from apt."
+        exit 1
     fi
 
-    info "Installing base system dependencies..."
+    info "Installing required system, Qt6/PyQt6, and OpenCV packages..."
     apt_install_required \
         python3-pip \
+        python3-numpy \
+        python3-opencv \
+        python3-pyqt6 \
+        python3-pyqt6.qt \
+        python3-pyqt6.qtquick \
+        python3-pyqt6.qtmultimedia \
+        python3-pyqt6.qtqml \
         git \
         ffmpeg \
         v4l-utils \
@@ -187,14 +180,7 @@ install_system_deps() {
         libglib2.0-0 \
         libxkbcommon-x11-0 \
         libxcb-cursor0 \
-        libxcb-xinerama0
-
-    info "Installing Qt6/PyQt6 binary packages when available..."
-    apt_install_optional \
-        python3-pyqt6 \
-        python3-pyqt6.qtquick \
-        python3-pyqt6.qtmultimedia \
-        python3-pyqt6.qtqml \
+        libxcb-xinerama0 \
         qt6-base-dev \
         qt6-qpa-plugins \
         qt6-wayland \
@@ -207,6 +193,16 @@ install_system_deps() {
         qml6-module-qtqml \
         qml6-module-qtqml-workerscript \
         qml6-module-qtmultimedia
+
+    if ! python_has_pyqt6 >/dev/null; then
+        error "PyQt6 with QtQml/QtQuick is not importable after apt installation."
+        exit 1
+    fi
+
+    if ! python_has_opencv >/dev/null; then
+        error "OpenCV (cv2) is not importable after apt installation."
+        exit 1
+    fi
 }
 
 install_system_deps
@@ -217,34 +213,18 @@ install_python_deps() {
     pip_install --user --upgrade pip setuptools wheel
 
     if [ "$ARCH" = "arm" ]; then
-        info "ARM detected. Avoiding Qt source builds."
-        info "Installing non-Qt Python dependencies..."
+        info "ARM detected. Using apt-provided Qt6/PyQt6 and OpenCV."
+        info "Installing remaining non-Qt, non-OpenCV Python dependencies..."
         pip_install --user --prefer-binary \
-            "opencv-python-headless>=4.8.0" \
-            "numpy>=1.24.0" \
             "pyserial>=3.5" \
             "qrcode[pil]>=7.4" \
             "Pillow>=10.0.0" \
             "loguru>=0.7.0" \
             "tomli>=2.0.1; python_version<'3.11'"
-
-        if python_has_pyqt6 >/dev/null; then
-            info "Using system PyQt6/Qt6 binary packages."
-        else
-            warn "System PyQt6/Qt6 packages are not importable."
-            info "Trying PyQt6 wheel-only install. This will fail instead of building Qt from source."
-            if ! pip_install_binary_only --user "PyQt6>=6.5.0" "PyQt6-Qt6>=6.5.0" "PyQt6-sip>=13.0"; then
-                error "Could not install PyQt6 from apt packages or prebuilt wheels."
-                error "Install distro Qt6/PyQt6 packages for this board, then rerun this script."
-                exit 1
-            fi
-        fi
     else
-        info "x86 detected. Installing dependencies from prebuilt wheels when possible..."
+        info "x86 detected. Using apt-provided Qt6/PyQt6 and OpenCV."
+        info "Installing remaining non-Qt, non-OpenCV Python dependencies..."
         pip_install --user --prefer-binary \
-            "PyQt6>=6.5.0" \
-            "opencv-python-headless>=4.8.0" \
-            "numpy>=1.24.0" \
             "pyserial>=3.5" \
             "qrcode[pil]>=7.4" \
             "Pillow>=10.0.0" \
