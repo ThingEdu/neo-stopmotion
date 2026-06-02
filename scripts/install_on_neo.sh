@@ -23,7 +23,7 @@ ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
 ICON_FILE="$ICON_DIR/neo-stopmotion.png"
 PYPI_PACKAGE="neo-stopmotion"
 PYTHON_MODULE="neo_stopmotion"
-GITHUB_REPO="https://github.com/lgthevinh/NeoStopMotion.git"
+GITHUB_REPO="https://github.com/lgthevinh/neo-stopmotion.git"
 RAW_INSTALL_URL="https://raw.githubusercontent.com/lgthevinh/NeoStopMotion/main/scripts/install_on_neo.sh"
 
 # -- Parse arguments -----------------------------------------------------------
