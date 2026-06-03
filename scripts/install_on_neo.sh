@@ -6,7 +6,7 @@
 #
 # Usage:
 #   Local:  bash scripts/install_on_neo.sh
-#   Remote: curl -sSL https://raw.githubusercontent.com/lgthevinh/NeoStopMotion/main/scripts/install_on_neo.sh | bash
+#   Remote: curl -sSL https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/scripts/install_on_neo.sh | bash
 #
 # Options:
 #   --no-desktop   Skip .desktop file and icon installation
@@ -16,15 +16,15 @@ set -euo pipefail
 
 # -- Configuration ------------------------------------------------------------
 APP_NAME="neo-stopmotion"
-DISPLAY_NAME="NeoStopMotion"
+DISPLAY_NAME="neo-stopmotion"
 BIN_LINK="$HOME/.local/bin/neo-stopmotion"
 DESKTOP_FILE="$HOME/.local/share/applications/neo-stopmotion.desktop"
 ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
 ICON_FILE="$ICON_DIR/neo-stopmotion.png"
 PYPI_PACKAGE="neo-stopmotion"
 PYTHON_MODULE="neo_stopmotion"
-GITHUB_REPO="https://github.com/lgthevinh/neo-stopmotion.git"
-RAW_INSTALL_URL="https://raw.githubusercontent.com/lgthevinh/NeoStopMotion/main/scripts/install_on_neo.sh"
+GITHUB_REPO="https://github.com/ThingEdu/neo-stopmotion.git"
+RAW_INSTALL_URL="https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/scripts/install_on_neo.sh"
 
 # -- Parse arguments -----------------------------------------------------------
 SKIP_DESKTOP=false
