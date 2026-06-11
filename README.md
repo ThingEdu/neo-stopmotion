@@ -65,7 +65,7 @@ NEO_STOPMOTION_AUTOSHOOT=8 NEO_STOPMOTION_AUTOEXPORT=1 \
 ### Triển khai NEO One (Linux ARM64)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/makerviet/NeoStopMotion/main/scripts/install_on_neo.sh | bash
+curl -sSL https://raw.githubusercontent.com/ThingEdu/NeoStopMotion/main/scripts/install_on_neo.sh | bash
 neo-stopmotion
 ```
 
