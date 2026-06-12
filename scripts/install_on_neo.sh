@@ -196,6 +196,7 @@ if [ "$ARCH" = "arm" ]; then
         "pyserial>=3.5" \
         "qrcode[pil]>=7.4" \
         "Pillow>=10.0.0" \
+        "requests>=2.31.0" \
         "loguru>=0.7.0" \
         "tomli>=2.0.1; python_version<'3.11'"
 
