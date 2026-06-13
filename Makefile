@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format build clean
+.PHONY: install dev test lint format build clean publish publish-test
 
 install:
 	pip install -e .
@@ -31,3 +31,9 @@ clean:
 	rm -rf build dist *.egg-info
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type d -name .pytest_cache -exec rm -rf {} +
+
+publish-test:
+	bash scripts/publish.sh --test-only
+
+publish:
+	bash scripts/publish.sh

@@ -2,7 +2,11 @@
 name = "neo-stopmotion"
 version = "1.0.0"
 description = "Stop-motion studio — NEO One × ThingEdu × Maker Việt"
-authors = [{name = "Maker Việt × Dế Foundation"}]
+authors = [
+    {name = "Maker Việt"},
+    {name = "Dế Foundation"},
+    {name = "ThingEdu"},
+]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.10"
