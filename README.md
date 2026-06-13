@@ -1,130 +1,213 @@
 <div align="center">
-  <img src="src/neo_stopmotion/resources/images/maker_viet_logo.png" width="180" alt="Maker Việt"/>
+  <img src="https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/src/neo_stopmotion/resources/images/maker_viet_logo.png" width="160" alt="Maker Việt"/>
 
   # NeoStopMotion
 
-  **Maker Việt × ThingEdu — NEO One**
+  **Stop-motion studio for kids · Maker Việt × ThingEdu × NEO One**
 
-  Stop-motion studio cho trẻ em 6-14 tuổi. Chụp frame bằng nút bấm vật lý ThingBot (UART), ghép phim MP4+GIF kèm watermark Maker Việt, upload tự động lên cloud, sinh QR code cho phụ huynh quét tải về.
-
-  [![Repo public](https://img.shields.io/badge/github-makerviet%2FNeoStopMotion-blue)](https://github.com/makerviet/NeoStopMotion)
+  [![PyPI version](https://img.shields.io/pypi/v/neo-stopmotion)](https://pypi.org/project/neo-stopmotion/)
+  [![Python](https://img.shields.io/pypi/pyversions/neo-stopmotion)](https://pypi.org/project/neo-stopmotion/)
   [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+  [![GitHub](https://img.shields.io/badge/github-ThingEdu%2Fneo--stopmotion-blue)](https://github.com/ThingEdu/neo-stopmotion)
 </div>
 
 ---
 
-## ✨ Tính năng v1.0
+## Table of Contents
 
-- **Live preview** webcam với **onion skin** (frame trước hiện mờ chồng lên)
-- **2 nút ThingBot**: IO1 (xanh) chụp frame · IO2 (đỏ) tạo phim
-- Phím tắt: `Space`, `Z` (undo), `Enter` (export)
-- Ghép phim **MP4** (H.264 1280×720 10fps) + **GIF** (640×360 palette) qua ffmpeg
-- **Watermark Maker Việt** logo nhúng vào mỗi frame video (góc dưới phải, 85% opacity)
-- **Upload cloud tự động** (catbox.moe vĩnh viễn, fallback 0x0.st)
-- **QR code** sinh local trỏ tới link cloud
-- **Auto-reset**: bấm IO1 trên SuccessPage để bắt đầu phim mới ngay
-- Onion skin chỉ ở live preview, **không** ghi vào file (giữ chất lượng)
-- Synthetic capture fallback cho dev không có webcam
+- [Description](#description)
+- [Features](#features)
+- [Installation](#installation)
+- [User Manual](#user-manual)
+- [Documents](#documents)
+- [About & Contributing](#about--contributing)
 
-## 🎬 Trải nghiệm 25-30 phút (cho HS 6-14 tuổi)
+---
 
-```
-1. Đón tiếp + flipbook 20 trang giải thích nguyên lý hoạt hình
-2. Chọn vật liệu (hộp A đơn giản hoặc hộp B mở)
-3. Sắp đặt sân khấu trên mặt phẳng 60×60cm
-4. Chụp 30-50 frame:
-   bấm IO1 → tách → di chuyển nhân vật → bấm IO1 → ...
-5. Bấm IO2 → ghép phim MP4 + GIF + upload + QR
-6. PH quét QR bằng iPhone Camera/Zalo → tải MP4 về
-7. Bấm IO1 lần nữa → tự động làm phim mới
-```
+## Description
 
-## 🚀 Quick start
+NeoStopMotion is an open-source stop-motion animation studio designed for children aged 6–14, built to run on the **NEO One** education device (ARM64/Armbian) and standard Linux/macOS desktops.
 
-### macOS dev
+Students physically capture animation frames one by one using the **ThingBot** controller (two arcade buttons via UART), then the app automatically assembles an MP4 + GIF, uploads it to the cloud, and generates a QR code that parents can scan to download the film.
 
-```bash
-git clone https://github.com/makerviet/NeoStopMotion.git
-cd NeoStopMotion
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
-brew install ffmpeg
-make run                            # webcam thật (cần camera permission)
-make run-sim                        # synthetic capture (không cần camera)
-```
+The project is grounded in **Constructionism** (Papert, MIT): children learn by building something personally meaningful with their own hands, not by watching a demonstration.
 
-### Test headless (CI hoặc verify nhanh)
+**Tech stack:** Python 3.10+ · PyQt6 · QML 6 · OpenCV · pyserial · ffmpeg · qrcode · loguru · catbox.moe
 
-```bash
-NEO_STOPMOTION_AUTOSHOOT=8 NEO_STOPMOTION_AUTOEXPORT=1 \
-  python -m neo_stopmotion
-# Tự chụp 8 frame → ghép phim watermarked → upload catbox →
-# in URL ra log; MP4/GIF/QR lưu trong ~/neostopmotion_sessions/session_*/
-```
+---
 
-### Triển khai NEO One (Linux ARM64)
+## Features
+
+- **Live webcam preview** with **onion skin** overlay — the previous frame appears faintly over the live feed to guide positioning
+- **2-button ThingBot controller** (IO1 blue = capture frame · IO2 red = create film) over UART, with full keyboard fallback (`Space` / `Enter` / `Z`)
+- **MP4 export** (H.264 1280×720 at 10 fps) and **GIF** (640×360 lanczos palette) via ffmpeg, all processed on a non-blocking QThread
+- **Maker Việt watermark** automatically embedded bottom-right at 85% opacity
+- **Automatic cloud upload** — catbox.moe (permanent, primary) with 0x0.st as 30-day fallback
+- **QR code** generated locally and displayed on-screen for instant parent download
+- **Auto-reset flow** — pressing the capture button on the success screen immediately starts a new session without losing the previous film
+- Onion skin exists only in live preview and is never written to saved frames (preserving full image quality)
+- **Synthetic capture fallback** for development environments without a webcam
+
+---
+
+## Installation
+
+### From PyPI (recommended)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ThingEdu/NeoStopMotion/main/scripts/install_on_neo.sh | bash
+pip install neo-stopmotion
 neo-stopmotion
 ```
 
-Installer sẽ cài `ffmpeg`, Qt6/PyQt6 và Python OpenCV bằng apt package trên ARM để tránh build Qt6/OpenCV từ source.
+> Requires **ffmpeg** to be installed separately (`brew install ffmpeg` on macOS, `sudo apt install ffmpeg` on Ubuntu/Debian).
 
-## ⌨️ Phím tắt / Nút
+### On NEO One (ARM64 — Armbian / Ubuntu)
 
-| Phím | Nút ThingBot | Hành động |
-|---|---|---|
-| `Space` | IO1 (xanh) | Chụp frame; trên SuccessPage = auto-reset + chụp |
-| `Z` | — | Xoá frame mới nhất |
-| `Enter` | IO2 (đỏ) | Tạo phim (cần ≥5 frame) |
-
-## 🛠 Stack
-
-Python 3.10+ · PyQt6 · QML 6 · OpenCV · pyserial · ffmpeg · qrcode · loguru · catbox.moe
-
-## 📁 Sản phẩm mỗi session
-
-```
-~/projects/session_2026_05_10_193722/
-├── frames/frame_0001.png … frame_0008.png    # PNG raw (no watermark)
-├── output.mp4                                 # 1280×720 H.264 + watermark
-├── output.gif                                 # 640×360 lanczos + watermark
-├── qr.png                                     # QR 360px → cloud URL
-└── project.json                               # metadata (session_id, exported, urls…)
-```
-
-## 📚 Tài liệu
-
-- [**ARCHITECTURE.md**](DOC/ARCHITECTURE.md) — kiến trúc 4-lớp, SignalBus + Worker Thread, design tokens
-- [**USER_GUIDE.md**](DOC/USER_GUIDE.md) — hướng dẫn Thợ Cả vận hành tại trạm
-- [**SYSTEM_GUIDE.md**](DOC/SYSTEM_GUIDE.md) — cấu hình, env vars, deploy, mở rộng
-- [**IMPLEMENTATION_PLAN.md**](DOC/IMPLEMENTATION_PLAN.md) — 30 task TDD breakdown
-- [**firmware/thingbot_stopmotion/README.md**](firmware/thingbot_stopmotion/README.md) — sơ đồ nối dây ThingBot + flash
-
-## 🎯 Triết lý
-
-- **Constructionism (Papert)**: trẻ học bằng cách tự tay tạo ra phim có ý nghĩa cá nhân
-- **Tinkering (Exploratorium)**: vật liệu mở, môi trường là người thầy thứ ba
-- **Bình Dân Học STEM**: Made in Vietnam, mã nguồn mở MIT, giá phổ thông
-
-## 🤝 Đóng góp
-
-Issues + PRs welcome. Chạy test trước khi PR:
+The installer handles system Qt6/PyQt6 and OpenCV via apt to avoid building from source on ARM:
 
 ```bash
-make test     # 29 tests
+curl -sSL https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/scripts/install_on_neo.sh | bash
+neo-stopmotion
+```
+
+Pin a specific version:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/scripts/install_on_neo.sh) --version=1.0.0
+```
+
+Uninstall:
+
+```bash
+bash <(curl -sSL https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/scripts/install_on_neo.sh) --uninstall
+```
+
+### Developer setup (macOS / Ubuntu desktop)
+
+```bash
+git clone https://github.com/ThingEdu/neo-stopmotion.git
+cd neo-stopmotion
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+brew install ffmpeg          # macOS; use apt on Linux
+make run                     # real webcam (camera permission popup on first run)
+make run-sim                 # synthetic frames — no camera needed
+```
+
+Run tests and linting:
+
+```bash
+make test     # 29 unit tests
 make lint     # ruff + mypy
 ```
 
-## 📜 License
+---
 
-MIT — theo cam kết Bình Dân Học STEM, mã nguồn mở, Made in Vietnam.
+## User Manual
+
+### Controls
+
+| Key | ThingBot button | Action |
+|-----|-----------------|--------|
+| `Space` | IO1 (blue) | Capture one frame. On the Success screen: auto-reset and capture the first frame of a new film. |
+| `Z` | — | Delete the most recent frame (undo). |
+| `Enter` | IO2 (red) | Create film from all captured frames (requires ≥ 5 frames). |
+
+### Workflow
+
+```
+SplashScreen ──2s──► CapturePage ◄──────────────────────────┐
+                          │                                  │
+                    (≥ 5 frames)                             │
+                          │                                  │
+                          ▼                               reset_session()
+                    ExportingPage                            │
+                          │                                  │
+                          ▼                                  │
+                    SuccessPage ─── press IO1 / Space ───────┘
+```
+
+### Typical session (25–30 minutes)
+
+1. **Set up the stage** — arrange characters on a flat 60×60 cm surface in front of the webcam.
+2. **Shoot frames** — press IO1, move the character a small amount, press IO1 again. Repeat 30–50 times. The onion skin overlay shows the previous frame faintly to help guide each movement.
+3. **Create the film** — press IO2 (or `Enter`) once you have at least 5 frames. The app exports MP4 + GIF and uploads to the cloud automatically.
+4. **Share** — a QR code appears on-screen. Parents scan it with any camera app to download the MP4.
+5. **Next film** — press IO1 on the success screen to reset immediately and start a new session.
+
+### Session output
+
+```
+~/projects/session_2026_05_10_193722/
+├── frames/
+│   ├── frame_0001.png   # raw PNG, no watermark
+│   └── ...
+├── output.mp4           # 1280×720 H.264 + Maker Việt watermark
+├── output.gif           # 640×360 lanczos + watermark
+├── qr.png               # 360 px QR pointing to cloud URL
+└── project.json         # session metadata (id, frame count, urls…)
+```
+
+### Environment variables
+
+| Variable | Values | Effect |
+|----------|--------|--------|
+| `NEO_STOPMOTION_UART` | `auto` / `simulator` / `/dev/ttyUSB0` | Select UART backend |
+| `NEO_STOPMOTION_CAPTURE` | `synthetic` | Skip webcam, use test pattern |
+| `NEO_STOPMOTION_CLOUD` | `0` / `1` | Disable / enable cloud upload |
+| `NEO_STOPMOTION_DEBUG` | `1` | Enable DEBUG log level |
+
+---
+
+## Documents
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](DOC/ARCHITECTURE.md) | 4-layer architecture, SignalBus, Worker Thread, design tokens |
+| [SYSTEM_GUIDE.md](DOC/SYSTEM_GUIDE.md) | Configuration, environment variables, deployment, customisation |
+| [USER_GUIDE.md](DOC/USER_GUIDE.md) | Operator guide for running the station |
+| [EXPERIENCE_GUIDE.md](DOC/EXPERIENCE_GUIDE.md) | 25–30 min facilitation script for educators |
+| [IMPLEMENTATION_PLAN.md](DOC/IMPLEMENTATION_PLAN.md) | TDD task breakdown (30 tasks) |
+| [firmware/thingbot_stopmotion/README.md](firmware/thingbot_stopmotion/README.md) | ThingBot wiring diagram and firmware flash guide |
+
+---
+
+## About & Contributing
+
+### Philosophy
+
+NeoStopMotion is built on three principles:
+
+- **Constructionism (Papert, MIT)** — children learn by creating something personally meaningful, not by watching a demonstration. Each film is an *object to think with*.
+- **Tinkering (Exploratorium)** — open-ended materials and an open environment let children self-direct. The facilitator asks questions; the environment teaches.
+- **Bình Dân Học STEM (Maker Việt)** — Made in Vietnam, MIT-licensed, affordable. Vietnamese children deserve high-quality STEM tools built at home.
+
+### Contributing
+
+Issues and pull requests are welcome.
+
+```bash
+# Run tests and lint before opening a PR
+make test     # must pass all 29 tests
+make lint     # ruff + mypy (strict)
+```
+
+Please open an issue first for significant changes so we can discuss the approach.
+
+### Authors
+
+- **Maker Việt** — hardware platform and pedagogy
+- **Dế Foundation** — software architecture and implementation
+- **ThingEdu** — ThingBot firmware and education program
+
+### License
+
+MIT — open source, Made in Vietnam.
 
 ---
 
 <div align="center">
-  <em>"Trao cho một đứa trẻ 8 tuổi quyền lực kể câu chuyện của riêng mình bằng công nghệ."</em>
-
-  <strong>Maker Việt × ThingEdu — 05/2026</strong>
+  <em>"Give an 8-year-old the power to tell their own story with technology."</em>
+  <br/>
+  <strong>Maker Việt × ThingEdu × Dế Foundation — 2026</strong>
 </div>

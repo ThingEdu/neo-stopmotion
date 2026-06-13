@@ -9,8 +9,9 @@
 #   Remote: curl -sSL https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/scripts/install_on_neo.sh | bash
 #
 # Options:
-#   --no-desktop   Skip .desktop file and icon installation
-#   --uninstall    Remove NeoStopMotion installation
+#   --no-desktop       Skip .desktop file and icon installation
+#   --uninstall        Remove NeoStopMotion installation
+#   --version=X.Y.Z    Install a specific version from PyPI (default: latest)
 # ==============================================================================
 set -euo pipefail
 
@@ -23,7 +24,7 @@ ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
 ICON_FILE="$ICON_DIR/neo-stopmotion.png"
 PYPI_PACKAGE="neo-stopmotion"
 PYTHON_MODULE="neo_stopmotion"
-GITHUB_REPO="https://github.com/ThingEdu/neo-stopmotion.git"
+INSTALL_VERSION=""   # set via --version=X.Y.Z; empty = latest from PyPI
 RAW_INSTALL_URL="https://raw.githubusercontent.com/ThingEdu/neo-stopmotion/main/scripts/install_on_neo.sh"
 
 # -- Parse arguments -----------------------------------------------------------
@@ -34,9 +35,16 @@ for arg in "$@"; do
     case "$arg" in
         --no-desktop) SKIP_DESKTOP=true ;;
         --uninstall)  UNINSTALL=true ;;
+        --version=*)  INSTALL_VERSION="${arg#*=}" ;;
         *)            echo "Unknown option: $arg"; exit 1 ;;
     esac
 done
+
+if [ -n "$INSTALL_VERSION" ]; then
+    PYPI_SPEC="${PYPI_PACKAGE}==${INSTALL_VERSION}"
+else
+    PYPI_SPEC="${PYPI_PACKAGE}"
+fi
 
 # -- Helpers -------------------------------------------------------------------
 info()  { echo -e "\033[1;32m[INFO]\033[0m  $*"; }
@@ -154,7 +162,6 @@ install_system_deps() {
             python3-pyqt6.qtquick \
             python3-pyqt6.qtmultimedia \
             python3-pyqt6.qtqml \
-            git \
             ffmpeg \
             v4l-utils \
             libegl1 \
@@ -201,11 +208,8 @@ if [ "$ARCH" = "arm" ]; then
         "tomli>=2.0.1; python_version<'3.11'"
 
     info "ARM detected - installing without Python package dependencies..."
-    if ! pip_install --no-deps --quiet "$PYPI_PACKAGE" 2>&1; then
-        info "PyPI install failed. Installing from GitHub source..."
-        require_cmd git
-        pip_install --no-deps "git+${GITHUB_REPO}"
-    fi
+    pip_install --no-deps --quiet "$PYPI_SPEC" \
+        || { error "Failed to install ${PYPI_SPEC} from PyPI. Check your network and try again."; exit 1; }
 
     if ! python_has_pyqt6 >/dev/null; then
         error "PyQt6/QtQuick is not available from apt packages."
@@ -220,13 +224,9 @@ if [ "$ARCH" = "arm" ]; then
     fi
 else
     # x86: PyQt6/OpenCV wheels are available, normal install.
-    if pip_install --quiet "$PYPI_PACKAGE" 2>&1; then
-        info "Installed from PyPI."
-    else
-        info "PyPI install failed. Installing from GitHub source..."
-        require_cmd git
-        pip_install "git+${GITHUB_REPO}"
-    fi
+    pip_install --quiet "$PYPI_SPEC" \
+        || { error "Failed to install ${PYPI_SPEC} from PyPI. Check your network and try again."; exit 1; }
+    info "Installed ${PYPI_SPEC} from PyPI."
 fi
 
 # -- Step 3: Verify installation ----------------------------------------------
