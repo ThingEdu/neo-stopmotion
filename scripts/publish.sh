@@ -54,7 +54,17 @@ python -m build --version          >/dev/null 2>&1 || fail "build not found — 
 ok "Prerequisites OK"
 
 # ── Read package version ───────────────────────────────────────────────────────
-PKG_VERSION=$(python -c "from neo_stopmotion import __version__; print(__version__)")
+PKG_VERSION=$(python -c "
+import sys, pathlib
+p = pathlib.Path('pyproject.toml')
+if sys.version_info >= (3, 11):
+    import tomllib
+    data = tomllib.loads(p.read_text())
+else:
+    import tomli
+    data = tomli.loads(p.read_text())
+print(data['project']['version'])
+")
 PKG_NAME="neo-stopmotion"
 log "Package: ${PKG_NAME} v${PKG_VERSION}"
 

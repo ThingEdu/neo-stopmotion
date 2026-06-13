@@ -1,6 +1,6 @@
 [project]
 name = "neo-stopmotion"
-version = "1.0.0"
+version = "1.0.1"
 description = "Stop-motion studio — NEO One × ThingEdu × Maker Việt"
 authors = [
     {name = "Maker Việt"},
