@@ -8,7 +8,7 @@ authors = [
     {name = "ThingEdu"},
 ]
 license = {text = "MIT"}
-readme = "README.md"
+readme = "README-en.md"
 requires-python = ">=3.10"
 dependencies = [
     "PyQt6>=6.5.0",
