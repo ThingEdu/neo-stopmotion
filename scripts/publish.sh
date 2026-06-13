@@ -21,6 +21,14 @@
 
 set -euo pipefail
 
+# ── Load .env.publish if present ───────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${SCRIPT_DIR}/.env.publish"
+if [ -f "$ENV_FILE" ]; then
+    # shellcheck source=/dev/null
+    set -a; source "$ENV_FILE"; set +a
+fi
+
 # ── Flags ──────────────────────────────────────────────────────────────────────
 SKIP_TEST=false
 TEST_ONLY=false
@@ -69,7 +77,10 @@ ok "Metadata valid"
 # ── TestPyPI ───────────────────────────────────────────────────────────────────
 if [ "$SKIP_TEST" = false ]; then
     log "Uploading to TestPyPI..."
+    _SAVED_PW="${TWINE_PASSWORD:-}"
+    if [ -n "${TWINE_TEST_PASSWORD:-}" ]; then export TWINE_PASSWORD="$TWINE_TEST_PASSWORD"; fi
     twine upload --repository testpypi dist/*
+    export TWINE_PASSWORD="$_SAVED_PW"
     echo ""
     ok "TestPyPI upload complete."
     echo "   View at: https://test.pypi.org/project/${PKG_NAME}/${PKG_VERSION}/"
