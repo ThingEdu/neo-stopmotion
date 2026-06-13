@@ -51,12 +51,85 @@ cd firmware/thingbot_stopmotion && pio run     # build firmware
 - scope mỗi feature: `app | firmware | both`. `both` ⇒ giao thức UART app↔firmware phải khớp.
 
 ## SESSION PROTOCOL
-- **`SESSION START`**: Coordinator đọc branch → mode (`docs/02-architecture/working-modes-policy.md` §5), đọc `docs/04-phases/claude-active-phase.md` → `session-log.md` → `task-board.md`, báo trạng thái + top 3 next actions + blockers, **chờ PO**.
-- **`SESSION END`**: Coordinator soạn "State of the Union" (≤60 dòng) vào `session-log.md`, cập nhật `task-board.md`, đề xuất commit, STOP.
+
+### PHASE START (phase mới)
+Khi mở một phase mới, PO/Coordinator:
+1. **Tạo session Claude mới** (context sạch, tránh nhiễu phase cũ, tiết kiệm token).
+2. **Tạo phase folder**: `docs/04-phases/phase-NN-<short-name>/`.
+3. **Khởi tạo từ template**: `session-log.md`, `task-board.md`, và `wave-1/`.
+4. **Cập nhật con trỏ**: `docs/04-phases/claude-active-phase.md` (`active_phase_path`, `active_wave`, `branch`, `updated`).
+5. **Cắt nhánh** từ nhánh nền team: `git switch team && git switch -c feat/<short-name>`.
+
+Checklist:
+```
+- [ ] Session Claude mới (context sạch)
+- [ ] Phase folder docs/04-phases/phase-NN-xxx/ tạo
+- [ ] session-log.md + task-board.md init từ template
+- [ ] wave-1/ tạo
+- [ ] claude-active-phase.md trỏ tới phase mới
+- [ ] Nhánh feat/<name> cắt từ team
+```
+
+### `SESSION START`
+Coordinator đọc branch → mode (`docs/02-architecture/working-modes-policy.md` §5) → declare `[Coordinator] Active branch: <name> | Mode: <MODE>` → đọc `docs/04-phases/claude-active-phase.md` → `session-log.md` → `task-board.md` → báo trạng thái + top 3 next actions + blockers → **chờ PO**. (Đây cũng là **Gate 1** dưới đây.)
+
+### `SESSION END`
+Coordinator soạn "State of the Union" (≤60 dòng, mới nhất trên cùng) vào `session-log.md`, cập nhật `task-board.md`, đề xuất commit, STOP. (Đây cũng là **Gate 5**.)
+
 - Hook `SessionStart` (`.claude/hooks/session-init.cjs`) tự in con trỏ phase + nhắc luật two-layer.
 
-## Process — Plan → Wave → Confirm → Execute
-Kể cả khi PO nói "cứ làm đi": trình wave table → tạo `wave-N/T-XXX.md` (Goal/Scope/AC exact file+location+change/Testing/Output Contract) → cập nhật task-board + session-log → PO confirm → mới fire agent. **File repo là source of truth**, không phải `TaskCreate/TaskUpdate`.
+## COORDINATOR PRE-FLIGHT CHECKLIST (Gate 1–5)
+
+> BẮT BUỘC, theo đúng thứ tự, trước khi bất kỳ agent nào làm việc. Bỏ gate = vi phạm quy trình.
+> Lý do: `TaskCreate/TaskUpdate` chỉ sống trong 1 session, PO không thấy. **Source of truth xuyên session = file repo** (`task-board.md`, `session-log.md`, `wave-N/T-XXX.md`). Không cập nhật file = PO mất hoàn toàn khả năng theo dõi.
+
+### Gate 1 — Session Awareness (trước khi lập kế hoạch)
+- [ ] Đọc `docs/04-phases/claude-active-phase.md` (phase + wave đang chạy)
+- [ ] Đọc entry mới nhất `session-log.md` + trạng thái `task-board.md`
+- [ ] Resolve + declare working mode theo branch
+- [ ] Báo tóm tắt trạng thái cho PO
+- [ ] **CHỜ lệnh PO** (không tự động chạy)
+
+### Gate 2 — Wave Structure (trước khi giao việc agent)
+Khi PO giao việc, Coordinator:
+1. Tạo `wave-N/` trong phase folder.
+2. Tạo `T-XXX-<name>.md` cho TỪNG task (từ `docs/99-templates/T-000-task-template.md`): Goal / Scope / Acceptance Criteria (exact file + location + change) / Files to Touch / Testing / Output Contract.
+3. **UI check** mỗi task: gắn `ui: yes/no` và `design_required: yes/no`. Nếu `design_required: yes` → ux-designer làm design spec + PO duyệt **trước khi** dev code; ghi `design_ref` vào task.
+4. Tag `scope: app|firmware|both`.
+5. Cập nhật `task-board.md` (mọi task status `TODO`) + thêm entry `session-log.md`.
+6. **Trình wave structure cho PO confirm** → rồi mới sang Gate 3.
+
+Thứ tự cứng: **Plan → Wave Structure → PO Confirm → Execute.** KHÔNG nhảy từ "plan approved" sang code, kể cả khi PO nói "cứ làm đi".
+
+### Gate 3 — Agent Assignment (thực thi)
+Mỗi task:
+- [ ] (nếu `design_required: yes`) Xác nhận design spec đã có + PO duyệt — KHÔNG fire dev khi chưa có
+- [ ] Agent nhận lệnh bằng task reference ("làm T-XXX") — agent tự đọc file card
+- [ ] Cập nhật `task-board.md`: `TODO → IN_PROGRESS`
+- [ ] Agent chạy verification gate (app: `make test` + `make lint`; firmware: `pio run`; smoke headless nếu chạm capture/export) và đính kèm bằng chứng
+- [ ] Cập nhật `task-board.md`: `IN_PROGRESS → DONE`
+
+### Gate 4 — Test Handoff (sau khi mỗi task DONE)
+- [ ] Tạo/cập nhật `wave-N/test-guide.md` (tiếng Việt, cho người test KHÔNG biết codebase — PO là người test)
+- [ ] Mỗi task: tên + vấn đề đã sửa · điều kiện chuẩn bị (build nào, `make run-sim`…) · các bước tái hiện + kết quả mong đợi (trước/sau) · lưu ý
+- [ ] PO review test guide trước khi test
+
+### Gate 5 — Session Close (trước khi kết thúc)
+- [ ] Mọi task status đã cập nhật trong `task-board.md`
+- [ ] `session-log.md` có entry: file đã đổi, trạng thái hiện tại, next actions
+- [ ] Suggested commit gửi PO; `git show --stat HEAD` xác nhận file đã commit
+
+### Common Violations (tránh)
+| Vi phạm | Vì sao sai | Làm đúng |
+|---------|-----------|----------|
+| Dùng `TaskCreate/TaskUpdate` thay file | PO không thấy được | Luôn cập nhật file repo |
+| Fire agent khi chưa có `T-XXX.md` | Agent không có spec, chạy từ prompt tạm | Tạo task card trước |
+| Nhảy từ plan → code | Bỏ wave structure, PO mất tracking | Plan → wave → confirm → execute |
+| Cập nhật task-board hồi tố | PO không thấy lúc đang chạy | Cập nhật TRƯỚC khi làm |
+| Mark DONE khi chưa chạy test | Test hỏng lọt tới PR | Bằng chứng test trước khi DONE |
+| Log issue trong session-log mà không tạo task | Issue rơi qua khe | Mọi issue đã biết phải có task card |
+| Dev code UI design-heavy khi chưa có design spec | PO phải sửa nhiều vòng | `design_required: yes` → ux-designer spec → PO duyệt → mới code |
+| Rò rỉ tầng team vào PR lên main | Làm bẩn main, ảnh hưởng team khác | Dùng `ship-to-main.sh` + `check-no-team-files.sh` |
 
 ## Working modes (branch)
 `team` (base, chỉ cập nhật tầng team) · `feat/*` (FEATURE) · `fix/*` (HOTFIX) · `lab/*` (LAB) · `docs/*` (STRATEGY, chỉ về team) · `main` (STOP). Chi tiết: `docs/02-architecture/working-modes-policy.md`.

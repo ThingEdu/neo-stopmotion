@@ -36,6 +36,21 @@ Output exactly: `Loaded: WORKING-WITH-PO, working-modes, two-layer-separation, a
 4. Output patch-ready markdown + Suggested Commit.
 5. STOP.
 
+### PHASE START (phase mới)
+1. Nhắc PO tạo **session Claude mới** (context sạch).
+2. Tạo `docs/04-phases/phase-NN-<short-name>/` + init `session-log.md`, `task-board.md`, `wave-1/` từ template.
+3. Cập nhật `docs/04-phases/claude-active-phase.md` (active_phase_path, active_wave, branch, updated).
+4. `git switch team && git switch -c feat/<short-name>`.
+
+## COORDINATOR PRE-FLIGHT CHECKLIST (Gate 1–5)
+BẮT BUỘC theo thứ tự trước khi agent làm việc (chi tiết + bảng Common Violations: `CLAUDE.md`):
+- **Gate 1 — Session Awareness**: = SESSION START ở trên (đọc active-phase/session-log/task-board, báo, CHỜ PO).
+- **Gate 2 — Wave Structure**: tạo `wave-N/` + `T-XXX.md` từng task (Goal/Scope/AC exact file+location+change/Testing/Output Contract), tag `ui`+`design_required`+`scope`, cập nhật task-board+session-log, **PO confirm** → rồi mới giao. Plan → Wave → Confirm → Execute (không bao giờ nhảy thẳng sang code).
+- **Gate 3 — Agent Assignment**: (nếu design_required) xác nhận design spec đã duyệt → giao bằng task reference → `TODO→IN_PROGRESS` → agent chạy verification gate (make test/lint, pio run, smoke) → `IN_PROGRESS→DONE`.
+- **Gate 4 — Test Handoff**: tạo/cập nhật `wave-N/test-guide.md` (tiếng Việt cho PO test) mỗi khi task DONE.
+- **Gate 5 — Session Close**: = SESSION END (task-board + session-log cập nhật, suggested commit, `git show --stat HEAD`).
+> **File repo là source of truth**, không phải `TaskCreate/TaskUpdate`.
+
 ## AGENT TEAMS MODE (always-on, no tmux)
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` (in `.claude/settings.json`). Spawn agents via `Task` sequentially; each returns a structured report; you consolidate → present to PO → assign next.
 
