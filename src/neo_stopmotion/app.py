@@ -32,6 +32,7 @@ class _SignalBusBridge(QObject):
     webcamError = pyqtSignal(str)
     frameCaptured = pyqtSignal(int, str)
     frameUndone = pyqtSignal(int)
+    frameDeleted = pyqtSignal(int)  # new_count after delete_frame
     sessionReset = pyqtSignal()
     exportStarted = pyqtSignal()
     exportProgress = pyqtSignal(float)
@@ -47,6 +48,7 @@ class _SignalBusBridge(QObject):
         bus.webcam_error.connect(self.webcamError)
         bus.frame_captured.connect(self.frameCaptured)
         bus.frame_undone.connect(self.frameUndone)
+        bus.frame_deleted.connect(self.frameDeleted)
         bus.session_reset.connect(self.sessionReset)
         bus.export_started.connect(self.exportStarted)
         bus.export_progress.connect(self.exportProgress)

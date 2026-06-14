@@ -179,6 +179,8 @@ install_system_deps() {
             qml6-module-qtquick-templates \
             qml6-module-qtqml-workerscript \
             qml6-module-qtmultimedia \
+            gstreamer1.0-libav \
+            gstreamer1.0-plugins-bad \
             2>/dev/null || true
     elif [ "$ARCH" = "x86" ]; then
         info "x86 detected - PyQt6 and OpenCV will be installed via pip."
@@ -300,13 +302,21 @@ Comment=Stop-motion studio for NEO One and ThingBot
 Exec=$exec_path
 Icon=$icon_name
 Terminal=false
-Categories=Education;Graphics;Video;
+Categories=Education;Graphics;AudioVideo;Video;
 Keywords=stop-motion;animation;education;maker;thingbot;
 StartupNotify=true
 EOF
 
     update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
     info "Created desktop entry: $DESKTOP_FILE"
+
+    # Desktop launcher (clickable icon on the XFCE desktop). xfdesktop requires
+    # the .desktop file to be executable to launch it on double-click.
+    local desktop_dir="$HOME/Desktop"
+    mkdir -p "$desktop_dir"
+    cp "$DESKTOP_FILE" "$desktop_dir/neo-stopmotion.desktop"
+    chmod +x "$desktop_dir/neo-stopmotion.desktop"
+    info "Created desktop launcher: $desktop_dir/neo-stopmotion.desktop"
 }
 
 install_desktop_entry

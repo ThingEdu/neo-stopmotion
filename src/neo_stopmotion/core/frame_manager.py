@@ -1,13 +1,15 @@
 from __future__ import annotations
+
 import json
 import os
 from datetime import datetime
 from pathlib import Path
+
 import cv2
 import numpy as np
 from loguru import logger
 
-from neo_stopmotion.core.models import SessionMeta, SessionStatus
+from neo_stopmotion.core.models import SessionMeta
 
 
 class FrameManager:
@@ -40,7 +42,7 @@ class FrameManager:
         tmp_path = final_path.with_suffix(".png.tmp")
         ok, buf = cv2.imencode(".png", frame)
         if not ok:
-            raise IOError(f"Failed to encode PNG for {final_path}")
+            raise OSError(f"Failed to encode PNG for {final_path}")
         tmp_path.write_bytes(buf.tobytes())
         os.replace(tmp_path, final_path)
         self.metadata.frame_count = next_num
@@ -62,6 +64,40 @@ class FrameManager:
         self._save_metadata()
         logger.info(f"Frame undone: {filename}")
         return True
+
+    def delete_frame(self, n: int) -> None:
+        """Delete frame at 1-based index n, re-sequence frames after it.
+
+        Args:
+            n: 1-based frame index to delete. Must be in [1, frame_count].
+
+        Raises:
+            ValueError: if n is out of range [1, frame_count].
+        """
+        if self.frame_count == 0 or n < 1 or n > self.frame_count:
+            raise ValueError(
+                f"Frame index {n} out of range [1, {self.frame_count}]"
+            )
+
+        target = self.frames_dir / f"frame_{n:04d}.png"
+        target.unlink()
+        logger.debug(f"Frame deleted: {target.name}")
+
+        # Re-sequence: rename frame_(n+1)..frame_k → frame_n..frame_(k-1)
+        # Iterate in ascending order to avoid overwriting existing files.
+        if n < self.frame_count:
+            for i in range(n + 1, self.frame_count + 1):
+                src = self.frames_dir / f"frame_{i:04d}.png"
+                dst = self.frames_dir / f"frame_{i - 1:04d}.png"
+                src.rename(dst)
+                logger.debug(f"Renamed {src.name} → {dst.name}")
+
+        self.metadata.frame_count -= 1
+        self.metadata.duration_seconds = (
+            self.metadata.frame_count / self.metadata.fps_playback
+        )
+        self._save_metadata()
+        logger.info(f"delete_frame({n}) done — new count: {self.metadata.frame_count}")
 
     def get_all_frames(self) -> list[Path]:
         return sorted(self.frames_dir.glob("frame_*.png"))

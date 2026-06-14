@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from PyQt6.QtCore import QObject, pyqtSignal
 
 
@@ -15,6 +16,7 @@ class SignalBus(QObject):
     webcam_error = pyqtSignal(str)
     frame_captured = pyqtSignal(int, str)
     frame_undone = pyqtSignal(int)
+    frame_deleted = pyqtSignal(int)  # int = new frame_count after deletion
 
     # Session
     session_reset = pyqtSignal()
@@ -31,10 +33,10 @@ class SignalBus(QObject):
     # App
     status_message = pyqtSignal(str, str)  # level, message
 
-    _instance: "SignalBus | None" = None
+    _instance: SignalBus | None = None
 
     @classmethod
-    def instance(cls) -> "SignalBus":
+    def instance(cls) -> SignalBus:
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance

@@ -28,7 +28,7 @@ gif_scale_width = 640
 ffmpeg_binary = "ffmpeg"
 
 [storage]
-projects_dir = "/home/maker/projects"
+projects_dir = "~/projects"
 max_sessions = 50
 auto_cleanup_threshold_mb = 100
 

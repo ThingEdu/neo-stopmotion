@@ -1,6 +1,7 @@
 from __future__ import annotations
-from PyQt6.QtCore import QObject, pyqtSlot, pyqtProperty, pyqtSignal
+
 from loguru import logger
+from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
 from neo_stopmotion.services.export_service import ExportService
@@ -95,6 +96,53 @@ class AppController(QObject):
             logger.warning("Export requested but ExportService not configured")
             return
         self._export_service.start_export(fm)
+
+    @pyqtSlot(result="QVariantList")
+    def get_frame_paths(self) -> list[str]:
+        """Return sorted list of absolute file:// paths for all current frames.
+
+        Called by QML FilmStrip to refresh thumbnail sources after capture/delete.
+        Uses a timestamp query-string suffix for cache-busting so QML Image
+        does not show stale content after re-sequencing.
+        """
+        import time
+        ts = int(time.time() * 1000)
+        return [
+            f"file://{p}?t={ts}"
+            for p in self._session.frame_manager.get_all_frames()
+        ]
+
+    @pyqtSlot(int)
+    def handle_delete_frame(self, n: int) -> None:
+        """Public slot called from UI to delete frame at 1-based index n.
+
+        Delegates to _do_delete_frame; errors are caught and surfaced via
+        status_message so the UI can show a friendly alert without crashing.
+        """
+        self._do_delete_frame(n)
+
+    def _do_delete_frame(self, n: int) -> None:
+        """Delete frame n (1-based), emit frame_deleted(new_count), log."""
+        try:
+            self._session.frame_manager.delete_frame(n)
+        except ValueError as exc:
+            logger.warning(f"delete_frame({n}) invalid: {exc}")
+            self._bus.status_message.emit(
+                "warning", f"Không thể xoá tấm {n}: {exc}"
+            )
+            return
+        except OSError as exc:
+            logger.error(f"delete_frame({n}) OS error: {exc}")
+            self._bus.status_message.emit(
+                "error", "Oi, xoá ảnh bị lỗi. Con thử lại nhé!"
+            )
+            return
+
+        new_count = self._session.frame_manager.frame_count
+        self._frame_count = new_count
+        self.frameCountChanged.emit(new_count)
+        self._bus.frame_deleted.emit(new_count)
+        logger.info(f"handle_delete_frame({n}) — new count: {new_count}")
 
     @pyqtSlot()
     def reset_session(self) -> None:

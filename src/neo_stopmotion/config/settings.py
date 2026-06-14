@@ -53,7 +53,7 @@ class ExportCfg:
 
 @dataclass
 class StorageCfg:
-    projects_dir: str = "/home/maker/projects"
+    projects_dir: str = "~/projects"
     max_sessions: int = 50
     auto_cleanup_threshold_mb: int = 100
 
