@@ -2,7 +2,7 @@
 id: T-002
 title: "Desktop launcher icon — icon ngoài màn hình XFCE trên NEO One"
 assignee: "devops"
-status: "TODO"
+status: "REVIEW"
 phase: "phase-01-neo-device-polish"
 wave: "wave-1"
 priority: "P0"

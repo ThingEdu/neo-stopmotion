@@ -2,7 +2,7 @@
 id: T-001
 title: "GStreamer H.264 codec — phim tự play trên NEO One"
 assignee: "devops"
-status: "TODO"
+status: "REVIEW"
 phase: "phase-01-neo-device-polish"
 wave: "wave-1"
 priority: "P0"
@@ -55,6 +55,15 @@ Sau khi xuất phim MP4 (H.264/libx264), SuccessPage.qml tự động phát vide
 | # | Câu hỏi | Trả lời | Ngày |
 |---|---------|---------|------|
 | 1 | avdec_h264 trước fix | rỗng (xác nhận bởi parent/PO điều tra) | 2026-06-14 |
+
+## ⚠️ Cập nhật root-cause (2026-06-14, khi thực thi)
+Cài codec là **CẦN nhưng CHƯA ĐỦ**. `decodebin`/`playbin` (Qt MediaPlayer dùng) tự chọn
+decoder phần cứng Allwinner **`v4l2slh264dec`** (rank 257 > avdec_h264 256) nhưng nó lỗi
+allocation → "Internal data stream error" → vẫn không play. Fix bổ sung: đặt
+`GST_PLUGIN_FEATURE_RANK=v4l2slh264dec:NONE` để ép dùng `avdec_h264` (phần mềm).
+Đã đặt trong **`src/neo_stopmotion/__main__.py`** (guard Linux, trước khi Qt Multimedia load,
+no-op trên macOS) thay vì trong installer — để mọi cách khởi chạy (icon/terminal) đều có.
+→ Files to Touch bổ sung: `src/neo_stopmotion/__main__.py`.
 
 ## Acceptance Criteria (kèm file/dòng/thay đổi)
 
