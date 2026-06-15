@@ -1,12 +1,14 @@
 """Async export wrapper — runs VideoExporter + cloud upload + QR on a QThread."""
 from __future__ import annotations
+
 import time
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+
 from loguru import logger
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from neo_stopmotion.core.cloud_uploader import CloudUploader, UploadError, generate_qr
 from neo_stopmotion.core.frame_manager import FrameManager
-from neo_stopmotion.core.video_exporter import VideoExporter, ExportError
+from neo_stopmotion.core.video_exporter import ExportError, VideoExporter
 from neo_stopmotion.utils.signal_bus import SignalBus
 
 
@@ -88,12 +90,36 @@ class ExportService(QObject):
         self._thread: QThread | None = None
         self._worker: _ExportWorker | None = None
 
-    def start_export(self, fm: FrameManager) -> None:
+    def start_export(self, fm: FrameManager, fps: int | None = None) -> None:
+        """Start export on a background thread.
+
+        Args:
+            fm: FrameManager with frames to export.
+            fps: Override fps for this export (T-006). If None, uses the
+                 exporter's configured fps.
+        """
         if self._thread is not None and self._thread.isRunning():
             logger.warning("Export already in progress")
             return
+
+        # T-006: if fps override provided, create a patched exporter copy
+        exporter = self._exporter
+        if fps is not None and fps != exporter.fps:
+            from neo_stopmotion.core.video_exporter import VideoExporter
+            exporter = VideoExporter(
+                fps=fps,
+                ffmpeg=self._exporter.ffmpeg,
+                codec=self._exporter.codec,
+                pix_fmt=self._exporter.pix_fmt,
+                gif_scale_width=self._exporter.gif_scale_width,
+                watermark_path=self._exporter.watermark_path,
+                watermark_width=self._exporter.watermark_width,
+                watermark_opacity=self._exporter.watermark_opacity,
+                watermark_margin=self._exporter.watermark_margin,
+            )
+
         self._thread = QThread()
-        self._worker = _ExportWorker(fm, self._exporter, self._uploader)
+        self._worker = _ExportWorker(fm, exporter, self._uploader)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._bus.export_progress)

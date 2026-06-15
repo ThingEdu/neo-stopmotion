@@ -4,8 +4,11 @@ from loguru import logger
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
+from neo_stopmotion.services.camera_selector import CameraSelector
 from neo_stopmotion.services.export_service import ExportService
 from neo_stopmotion.services.session_service import SessionService
+from neo_stopmotion.services.speed_selector import SpeedSelector
+from neo_stopmotion.services.video_saver import VideoSaver
 from neo_stopmotion.utils.signal_bus import SignalBus
 
 
@@ -13,6 +16,10 @@ class AppController(QObject):
     """Root QObject exposed to QML — facade over capture+session+export."""
 
     frameCountChanged = pyqtSignal(int)
+    # T-005: camera picker signals
+    cameraProbeResult = pyqtSignal(int, bool)  # (index, is_available)
+    cameraChanged = pyqtSignal(int)  # new webcam_index
+    pickerCounterChanged = pyqtSignal(int)  # bump to force image reload in picker
 
     def __init__(
         self,
@@ -20,6 +27,7 @@ class AppController(QObject):
         session: SessionService,
         export_service: ExportService | None = None,
         min_frames: int = 5,
+        camera_selector: CameraSelector | None = None,
     ) -> None:
         super().__init__()
         self._capture = capture
@@ -29,6 +37,13 @@ class AppController(QObject):
         self._bus = SignalBus.instance()
         self._frame_count = 0
         self._post_export = False  # True when on SuccessPage
+        # T-005: camera selector (lazy init if not provided)
+        self._camera_selector: CameraSelector | None = camera_selector
+        # T-005: picker preview counter — bumped each time a probe succeeds so QML
+        # refreshes image://picker/<counter> immediately.
+        self._picker_counter: int = 0
+        # T-006: speed selector (default Vua / 8 fps)
+        self.speed_selector = SpeedSelector()
         self._bus.uart_command_received.connect(self.handle_uart_command)
         self._bus.export_completed.connect(self._on_export_completed)
 
@@ -38,6 +53,11 @@ class AppController(QObject):
     @pyqtProperty(int, notify=frameCountChanged)
     def frameCount(self) -> int:
         return self._frame_count
+
+    @pyqtProperty(int, notify=pickerCounterChanged)
+    def pickerCounter(self) -> int:
+        """Monotonically increasing counter; QML uses it as image URL suffix."""
+        return self._picker_counter
 
     @pyqtSlot(str)
     def handle_uart_command(self, cmd: str) -> None:
@@ -95,7 +115,39 @@ class AppController(QObject):
         if self._export_service is None:
             logger.warning("Export requested but ExportService not configured")
             return
-        self._export_service.start_export(fm)
+        # T-006: pass selected fps to export service
+        fps = self.speed_selector.selected_fps
+        logger.info(f"Export started with fps={fps} ({self.speed_selector.selected_label})")
+        self._export_service.start_export(fm, fps=fps)
+
+    # ------------------------------------------------------------------
+    # T-006: Speed selector slots
+    # ------------------------------------------------------------------
+
+    @pyqtSlot(str)
+    def select_speed(self, label: str) -> None:
+        """QML slot: select playback speed by label ("Cham" / "Vua" / "Nhanh")."""
+        try:
+            self.speed_selector.select(label)
+            logger.debug(f"Speed selected: {label} ({self.speed_selector.selected_fps} fps)")
+        except ValueError as e:
+            logger.warning(f"Invalid speed label: {e}")
+
+    @pyqtSlot(result=str)
+    def get_selected_speed_label(self) -> str:
+        """Return the currently selected speed label."""
+        return self.speed_selector.selected_label
+
+    @pyqtSlot(result=int)
+    def get_selected_fps(self) -> int:
+        """Return the currently selected fps value."""
+        return self.speed_selector.selected_fps
+
+    @pyqtSlot(int, result=str)
+    def get_suggested_speed(self, frame_count: int) -> str:
+        """Return the auto-suggested speed label for *frame_count* (or '' if none)."""
+        suggestion = self.speed_selector.get_suggested_label(frame_count)
+        return suggestion or ""
 
     @pyqtSlot(result="QVariantList")
     def get_frame_paths(self) -> list[str]:
@@ -155,5 +207,100 @@ class AppController(QObject):
         self._capture.reset()
         self._frame_count = 0
         self._post_export = False
+        # T-006: reset speed selector to default (Vua / 8fps) for new session
+        self.speed_selector.reset()
         self.frameCountChanged.emit(0)
         self._bus.session_reset.emit()
+
+    # ------------------------------------------------------------------
+    # T-005: Camera picker slots
+    # ------------------------------------------------------------------
+
+    def _get_camera_selector(self) -> CameraSelector:
+        """Lazy-create CameraSelector if not injected."""
+        if self._camera_selector is None:
+            self._camera_selector = CameraSelector(current_capture=self._capture)
+        return self._camera_selector
+
+    @pyqtSlot(int)
+    def picker_probe_index(self, index: int) -> None:
+        """QML slot: probe camera at *index*; emits cameraProbeResult(index, is_available).
+
+        When probe succeeds, also bumps pickerCounter so QML refreshes the
+        live-preview image from image://picker/<counter>.
+        """
+        sel = self._get_camera_selector()
+        available = sel.probe_index(index)
+        if available:
+            self._picker_counter += 1
+            self.pickerCounterChanged.emit(self._picker_counter)
+        self.cameraProbeResult.emit(index, available)
+
+    @pyqtSlot(int)
+    def picker_confirm(self, new_index: int) -> None:
+        """QML slot: confirm camera selection — switches engine, writes config."""
+        sel = self._get_camera_selector()
+        sel.confirm_selection(new_index)
+        # Update internal reference so capture/preview keeps working
+        self._capture = sel.get_current_capture()
+        # Notify image provider update happens via webcam_ready signal in selector
+        self.cameraChanged.emit(new_index)
+        logger.info(f"Camera switched to index {new_index}")
+
+    @pyqtSlot()
+    def picker_cancel(self) -> None:
+        """QML slot: cancel picker — restore old camera, release probed."""
+        sel = self._get_camera_selector()
+        sel.cancel_selection()
+
+    @pyqtSlot(result=int)
+    def get_current_webcam_index(self) -> int:
+        """Return the currently active webcam index (for QML)."""
+        return self._capture.webcam_index
+
+    # ------------------------------------------------------------------
+    # T-007: Save video / copy link slots
+    # ------------------------------------------------------------------
+
+    @pyqtSlot(str, str)
+    def save_video(self, mp4_path: str, dest_dir: str) -> None:
+        """QML slot: copy MP4 file to dest_dir.
+
+        In production this runs on a Qt worker thread so the UI stays
+        responsive.  Emits save_video_result(True, dest_path) on success,
+        save_video_result(False, error_msg) on failure.
+        """
+        import threading
+        saver = VideoSaver()
+
+        def _run() -> None:
+            saver.save(mp4_path, dest_dir)
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+
+    @pyqtSlot(str)
+    def copy_link(self, url: str) -> None:
+        """QML slot: copy share URL to clipboard."""
+        VideoSaver().copy_link(url)
+
+    @pyqtSlot(str)
+    def open_save_dialog(self, mp4_path: str) -> None:
+        """QML slot: open native folder picker dialog then copy MP4 to chosen dir.
+
+        Runs QFileDialog on the main thread (required by Qt), then hands off
+        the actual file copy to a background thread via save_video().
+        If the user cancels the dialog, emits save_video_result(False, "")
+        so the UI can reset the loading state.
+        """
+        from PyQt6.QtWidgets import QFileDialog
+        dest_dir = QFileDialog.getExistingDirectory(
+            None,
+            "Chọn thư mục lưu phim",
+            "",
+        )
+        if not dest_dir:
+            # User cancelled — signal empty cancel so UI resets
+            self._bus.save_video_result.emit(False, "__cancelled__")
+            return
+        self.save_video(mp4_path, dest_dir)

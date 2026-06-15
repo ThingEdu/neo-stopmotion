@@ -4,6 +4,91 @@
 
 ---
 
+## Session 2026-06-15 (c) — SESSION END: State of the Union
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01.
+
+### Làm được trong phiên
+- Từ 4 vấn đề PO → wave-3: **T-005 chọn camera (live preview), T-006 tốc độ/fps, T-007 lưu video** — full pipeline BA→UX→PO duyệt→python-dev→**Architect PASS** (90 test PASS, smoke export đúng fps).
+- Roadmap R-1 (đóng gói & phân phối): PO chốt 4 ràng buộc (có Apple Dev account; khách phổ thông; online; update manual). Chờ lệnh khởi động.
+- PO chạy thử GUI trên Mac.
+
+### Trạng thái task
+| Task | Trạng thái |
+|------|-----------|
+| T-001 autoplay, T-002 desktop icon | 🟣 REVIEW (từ wave-1, chờ PO test thiết bị) |
+| T-003, T-004 (frame delete) | 🟢 DONE |
+| T-005/006/007 (wave-3) | 🟣 REVIEW — Architect PASS, chờ PO test GUI |
+| **T-008 phóng to preview** | ⚪ TODO — PO test thấy **preview quá bé**, cần redesign layout (ux trước) |
+
+### Bug/feedback mới từ PO test (2026-06-15)
+- Khung preview CapturePage **quá bé** trong khi là phần quan trọng nhất → đã tạo **T-008** (không để rơi khe). Ghi nguyên tắc vào memory.
+- Cảnh báo style native macOS: nút wave-3 dùng custom background có thể không render đúng màu — cần xác nhận GUI; phương án: set QQuickStyle Basic/Fusion.
+
+### Việc treo / next actions
+1. **Commit checkpoint**: toàn bộ product code wave-1/2/3 + tài liệu team CHƯA commit. Đề xuất commit (xem dưới).
+2. PO test wave-3 theo `wave-3/test-guide.md` (đặc biệt emoji 🐌🐇⚡ trên NEO).
+3. T-008 redesign preview (ux-designer) — phiên sau.
+4. R-1 phân phối: khởi động khi PO muốn.
+
+### Đề xuất commit (PO duyệt rồi mới chạy)
+Tất cả trên nhánh `feat/neo-device-polish` (team layer + product đều commit được trên feat; chỉ tách khi ship-to-main):
+`feat(capture): camera picker + live preview, speed/fps selector, save video; wave-3 specs + roadmap`
+
+---
+
+## Session 2026-06-15 (b) — Wave 3 implement xong, Architect PASS
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, Wave 3.
+
+Full pipeline trong 1 phiên: BA spec → ux design → PO duyệt (OK hết) → python-dev → Architect PASS.
+
+| Task | Trạng thái | Ghi chú |
+|------|-----------|---------|
+| T-005 chọn camera + live preview | 🟣 REVIEW | Picker xoay index + live preview thật (PickerImageProvider); lưu config |
+| T-006 chọn tốc độ/fps (5/8/12) | 🟣 REVIEW | fps áp vào MP4+GIF; auto gợi ý theo số frame; KHÔNG làm playbackRate (loại theo PO) |
+| T-007 lưu video + copy link | 🟣 REVIEW | Lưu MP4 qua file dialog + toast đường dẫn; chỉ MP4 |
+
+### Bằng chứng gate (Architect PASS)
+- pytest: **90 PASS** (38+5 wave-3 mới); 2 lỗi pre-existing do thiếu pytest-qt (không liên quan).
+- mypy --strict 4 file mới: sạch. ruff file mới: sạch (N815/N802 là tên signal Qt — nợ cũ toàn repo).
+- Smoke headless: export ra **đúng fps đã chọn** (8fps → MP4 1.00s). Hết warning "attach Keys".
+
+### File code đổi/thêm (CHƯA commit)
+services/{camera_selector,speed_selector,video_saver}.py, ui/picker_image_provider.py, ui/qml/components/CameraPickerPopup.qml, ui/qml/pages/{CapturePage,SuccessPage}.qml, services/{app_controller,export_service}.py, utils/signal_bus.py, app.py, tests/unit/test_{camera_select,video_speed,save_video}.py, tests/conftest.py.
+Tài liệu: docs/01-specs/features/{camera-select,video-speed,save-video}/, wave-3/, roadmap.md.
+
+### Chờ PO (Gate 4 test-guide đã có: wave-3/test-guide.md)
+1. Test GUI/thiết bị: live preview camera, **emoji 🐌🐇⚡ trên NEO Linux** (rủi ro cao nhất), dialog lưu video, màu nút (cảnh báo style native).
+2. Quyết commit checkpoint (gồm cả product code wave-1/2 còn treo) → ship-to-main khi duyệt.
+3. R-1 phân phối: 4 câu hỏi đã chốt, chờ lệnh khởi động (sau wave-3).
+
+---
+
+## Session 2026-06-15 (a) — Gate 2: Wave 3 structure (4 vấn đề PO)
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01.
+
+PO nêu 4 vấn đề sản phẩm; đã research code (camera/export/upload/playback) trước khi bàn.
+PO chốt: **làm quick-win ngay, phần cần thời gian → roadmap**. Dựng Gate 2:
+
+### Đã tạo (tầng team, chưa code product)
+- `wave-3/` + 3 task card: **T-005** chọn camera (Option A preview+xoay index), **T-006** chọn tốc độ/FPS (fix gốc = đổi FPS lúc export), **T-007** lưu video về máy/USB.
+- `docs/04-phases/roadmap.md`: **R-1** phân phối build (chiến lược, P1, chờ PO trả 4 câu hỏi), R-2 landing download, R-3 camera tên thiết bị, R-4 re-render tốc độ.
+- Cập nhật `task-board.md` (7 task, +3 TODO) + con trỏ `active_wave: wave-3`.
+
+### Phát hiện code (file:line) làm nền spec
+- Camera: `core/capture_engine.py:39` OpenCV index 0; `app.py:81-107` dò 0–5; iPhone = Continuity Camera macOS ưu tiên.
+- FPS: cố định 10 `defaults.toml:22`, `video_exporter.py:29`. SuccessPage không có `playbackRate`.
+- Upload: catbox direct link `cloud_uploader.py:65`; video local `session_dir/output.mp4`; SuccessPage không có nút lưu.
+
+### Chờ PO
+1. **Confirm wave-3 structure** → mới fire BA viết spec (mỗi task `design_required: yes` → ux → PO duyệt → dev).
+2. **Trả 4 câu hỏi R-1** để mở khoá feature phân phối.
+3. (tồn) Commit checkpoint product code wave-1/2; T-001 autoplay chờ PO test.
+
+---
+
 ## Session 2026-06-14 (f) — SESSION END: State of the Union
 
 **Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, Wave 1 + Wave 2.

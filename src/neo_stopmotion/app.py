@@ -2,10 +2,10 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtSignal
-from PyQt6.QtGui import QGuiApplication
-from PyQt6.QtQml import QQmlApplicationEngine
+
 from loguru import logger
+from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtSignal
+from PyQt6.QtQml import QQmlApplicationEngine
 
 from neo_stopmotion.config.settings import AppSettings, load_settings
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
@@ -15,9 +15,11 @@ from neo_stopmotion.core.video_exporter import VideoExporter
 from neo_stopmotion.hardware.uart_listener import UARTListener
 from neo_stopmotion.hardware.uart_simulator import UARTSimulator
 from neo_stopmotion.services.app_controller import AppController
+from neo_stopmotion.services.camera_selector import CameraSelector
 from neo_stopmotion.services.export_service import ExportService
 from neo_stopmotion.services.session_service import SessionService
 from neo_stopmotion.ui.image_provider import PreviewImageProvider
+from neo_stopmotion.ui.picker_image_provider import PickerImageProvider
 from neo_stopmotion.ui.qml_loader import find_qml_root, main_qml_path
 from neo_stopmotion.utils.logging_config import configure_logging
 from neo_stopmotion.utils.signal_bus import SignalBus
@@ -39,6 +41,8 @@ class _SignalBusBridge(QObject):
     exportCompleted = pyqtSignal(str, str, str, str)  # mp4_path, gif_path, share_url, qr_path
     exportFailed = pyqtSignal(str)
     statusMessage = pyqtSignal(str, str)
+    # T-007: save-video
+    saveVideoResult = pyqtSignal(bool, str)  # (success, message)
 
     def __init__(self, bus: SignalBus) -> None:
         super().__init__()
@@ -55,6 +59,7 @@ class _SignalBusBridge(QObject):
         bus.export_completed.connect(self._on_export_completed)
         bus.export_failed.connect(self.exportFailed)
         bus.status_message.connect(self.statusMessage)
+        bus.save_video_result.connect(self.saveVideoResult)
 
     def _on_export_completed(self, payload: dict) -> None:
         self.exportCompleted.emit(
@@ -113,7 +118,10 @@ def run() -> int:
     configure_logging(log_dir=log_dir, debug=settings.app.debug)
     logger.info(f"Starting NeoStopMotion v{settings.app.version}")
 
-    app = QGuiApplication(sys.argv)
+    # Use QApplication (not QGuiApplication) to support QFileDialog (T-007).
+    # Import here to avoid ImportError when conftest stubs PyQt6.QtWidgets.
+    from PyQt6.QtWidgets import QApplication as _QApp  # noqa: PLC0415
+    app = _QApp(sys.argv)
     app.setApplicationName("NeoStopMotion")
     app.setOrganizationName("MakerViet")
 
@@ -171,11 +179,17 @@ def run() -> int:
     logger.info(f"Using ffmpeg: {ffmpeg_bin}")
     logger.info(f"Cloud share: {'enabled (catbox.moe)' if cloud_enabled else 'disabled'}")
 
+    # T-005: build CameraSelector (only for real webcam — synthetic has no indices to switch)
+    camera_selector: CameraSelector | None = None
+    if not use_synthetic:
+        camera_selector = CameraSelector(current_capture=capture)
+
     controller = AppController(
         capture=capture,
         session=session,
         export_service=export_service,
         min_frames=settings.export.min_frames,
+        camera_selector=camera_selector,
     )
 
     uart_mode = settings.uart.port
@@ -199,7 +213,24 @@ def run() -> int:
     resources_url = QUrl.fromLocalFile(str(resources_dir)).toString()
 
     engine = QQmlApplicationEngine()
-    engine.addImageProvider("preview", PreviewImageProvider(capture))
+    preview_provider = PreviewImageProvider(capture)
+    engine.addImageProvider("preview", preview_provider)
+
+    # T-005: live preview inside camera picker popup
+    picker_provider = PickerImageProvider()
+    if camera_selector is not None:
+        picker_provider.set_selector(camera_selector)
+    engine.addImageProvider("picker", picker_provider)
+
+    # When the user confirms a camera switch, update the main preview provider
+    # to read from the new capture engine so live preview doesn't freeze.
+    def _on_camera_changed(_new_index: int) -> None:
+        if camera_selector is not None:
+            new_cap = camera_selector.get_current_capture()
+            preview_provider._capture = new_cap  # type: ignore[attr-defined]
+
+    controller.cameraChanged.connect(_on_camera_changed)
+
     engine.addImportPath(str(find_qml_root()))
     engine.rootContext().setContextProperty("appController", controller)
     engine.rootContext().setContextProperty("signalBusBridge", bridge)

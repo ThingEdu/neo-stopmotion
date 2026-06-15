@@ -30,6 +30,9 @@ class SignalBus(QObject):
     # Share
     share_url_ready = pyqtSignal(str, str)
 
+    # T-007: save-video result (success, message/path or error)
+    save_video_result = pyqtSignal(bool, str)
+
     # App
     status_message = pyqtSignal(str, str)  # level, message
 

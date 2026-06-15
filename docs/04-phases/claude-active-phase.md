@@ -5,7 +5,7 @@
 
 ```yaml
 active_phase_path: "docs/04-phases/phase-01-neo-device-polish"
-active_wave: "wave-1"
+active_wave: "wave-3"
 branch: "feat/neo-device-polish"
-updated: "2026-06-14"
+updated: "2026-06-15"
 ```

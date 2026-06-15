@@ -1,4 +1,6 @@
 // CapturePage.qml — Capture + FilmStrip review + delete frame (T-004)
+//                   Camera picker button (T-005)
+//                   Speed selector bar (T-006)
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -74,7 +76,7 @@ Item {
                 id: preview
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 200
+                Layout.minimumHeight: 180
             }
 
             FrameCounter {
@@ -100,7 +102,7 @@ Item {
         }
 
         // ---------------------------------------------------------------------------
-        // HintBar — dynamic hints based on filmstrip state (design-spec §E)
+        // HintBar — dynamic hints + "Đổi camera" button (T-005, design-spec §E)
         // ---------------------------------------------------------------------------
 
         Rectangle {
@@ -111,11 +113,12 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: N.NeoConstants.spacingM
-                spacing: N.NeoConstants.spacingL
+                anchors.margins: N.NeoConstants.spacingS
+                spacing: N.NeoConstants.spacingM
 
                 Text {
                     id: hintText
+                    Layout.fillWidth: true
                     text: {
                         if (filmStrip.selectedIndex > 0) {
                             return "Tấm số " + filmStrip.selectedIndex
@@ -124,15 +127,218 @@ Item {
                         if (N.AppState.frameCount === 0) {
                             return "Bấm tấm ảnh trong filmstrip bên dưới để xem lại"
                         }
-                        return "📷 Nút xanh / phím Space: chụp 1 ảnh  "
-                            + "↩️ Phím Z: xoá ảnh cuối  "
-                            + "🎬 Nút đỏ / phím Enter: tạo phim"
+                        return "📷 Space: chụp  ↩️ Z: xoá cuối  🎬 Enter: tạo phim"
                     }
                     font.pixelSize: N.NeoConstants.fontCaption
                     color: filmStrip.selectedIndex > 0
                         ? N.NeoConstants.primary
                         : N.NeoConstants.textPrimary
                     wrapMode: Text.WordWrap
+                }
+
+                // T-005: "Đổi camera" button — discrete, for Tho Ca
+                Button {
+                    id: changeCameraBtn
+                    width: 160
+                    height: 40
+                    text: "📷 Đổi camera"
+                    font.pixelSize: N.NeoConstants.fontCaption
+                    visible: true  // always visible on CapturePage
+
+                    background: Rectangle {
+                        radius: 8
+                        color: changeCameraBtn.hovered
+                            ? N.NeoConstants.surface
+                            : "transparent"
+                        border.color: changeCameraBtn.hovered
+                            ? "#424242"
+                            : N.NeoConstants.textSecondary
+                        border.width: 1
+                    }
+                    contentItem: Text {
+                        text: changeCameraBtn.text
+                        font: changeCameraBtn.font
+                        color: N.NeoConstants.textSecondary
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    // Larger touch area
+                    topPadding: 6
+                    bottomPadding: 6
+
+                    onClicked: cameraPicker.openPicker(appController.get_current_webcam_index())
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Thợ Cả: đổi camera đang dùng"
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // T-006: SpeedSelectorBar — between HintBar and Action Buttons
+        // ---------------------------------------------------------------------------
+
+        Rectangle {
+            id: speedSelectorBar
+            Layout.fillWidth: true
+            Layout.preferredHeight: 110
+            color: N.NeoConstants.surface
+            radius: 12
+            border.color: "#E0E0E0"
+            border.width: 1
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 12
+                spacing: N.NeoConstants.spacingS
+
+                // Label
+                Text {
+                    text: "Tốc độ phim:"
+                    font.pixelSize: N.NeoConstants.fontCaption
+                    color: N.NeoConstants.textSecondary
+                }
+
+                // 3 speed buttons
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    Repeater {
+                        id: speedBtns
+                        model: [
+                            { label: "Cham",  fps: 5,  icon: "🐌" },
+                            { label: "Vua",   fps: 8,  icon: "🐇" },
+                            { label: "Nhanh", fps: 12, icon: "⚡" }
+                        ]
+
+                        delegate: Item {
+                            id: speedBtnItem
+                            Layout.fillWidth: true
+                            height: 72
+
+                            // Track state
+                            property bool isActive: appController.get_selected_speed_label() === modelData.label
+                            property bool isSuggested: {
+                                if (isActive) return false
+                                var sg = appController.get_suggested_speed(N.AppState.frameCount)
+                                return sg === modelData.label
+                            }
+                            property bool isDisabled: N.AppState.frameCount === 0
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 12
+                                opacity: speedBtnItem.isDisabled ? 0.45 : 1.0
+                                color: {
+                                    if (speedBtnItem.isActive) return "#FFF3E0"
+                                    if (speedBtnItem.isSuggested) return "#FFFDE7"
+                                    if (speedBtnItem.isDisabled) return "#F5F5F5"
+                                    return N.NeoConstants.surface
+                                }
+                                border.color: {
+                                    if (speedBtnItem.isActive) return N.NeoConstants.primary
+                                    if (speedBtnItem.isSuggested) return N.NeoConstants.accent
+                                    return "#E0E0E0"
+                                }
+                                border.width: speedBtnItem.isActive ? 3 : (speedBtnItem.isSuggested ? 2 : 1)
+
+                                // Suggested border pulse animation
+                                SequentialAnimation on border.width {
+                                    running: speedBtnItem.isSuggested
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 2; duration: 750 }
+                                    NumberAnimation { to: 1; duration: 750 }
+                                }
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 2
+
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        // Use text fallbacks to avoid emoji issues on Linux ARM
+                                        text: modelData.label === "Cham" ? "Chậm"
+                                            : modelData.label === "Vua" ? "Vừa" : "Nhanh"
+                                        font.pixelSize: N.NeoConstants.fontBody
+                                        font.bold: speedBtnItem.isActive
+                                        color: speedBtnItem.isActive
+                                            ? N.NeoConstants.primary
+                                            : N.NeoConstants.textPrimary
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: modelData.fps + " fps"
+                                        font.pixelSize: N.NeoConstants.fontCaption
+                                        color: N.NeoConstants.textSecondary
+                                    }
+                                    // Gợi ý badge
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        visible: speedBtnItem.isSuggested
+                                        width: suggestText.width + 8
+                                        height: 20
+                                        color: N.NeoConstants.accent
+                                        radius: 4
+                                        Text {
+                                            id: suggestText
+                                            anchors.centerIn: parent
+                                            text: "★ Gợi ý"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                            color: N.NeoConstants.textPrimary
+                                        }
+                                    }
+                                }
+
+                                // Scale bounce on select
+                                scale: 1.0
+                                Behavior on scale {
+                                    SequentialAnimation {
+                                        NumberAnimation { to: 0.95; duration: 75 }
+                                        NumberAnimation { to: 1.0; duration: 75 }
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: !speedBtnItem.isDisabled
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        appController.select_speed(modelData.label)
+                                        speedFeedbackToast.show(modelData.label, modelData.fps)
+                                        // Trigger re-evaluation of isActive across all buttons
+                                        speedBtns.model = speedBtns.model
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Hint text (shown when suggestion differs from selection)
+                Text {
+                    id: speedHintText
+                    Layout.fillWidth: true
+                    visible: {
+                        if (N.AppState.frameCount === 0) return false
+                        var sg = appController.get_suggested_speed(N.AppState.frameCount)
+                        var sel = appController.get_selected_speed_label()
+                        return sg !== "" && sg !== sel
+                    }
+                    text: {
+                        var sg = appController.get_suggested_speed(N.AppState.frameCount)
+                        if (sg === "Cham") return "💡 Phim ít tấm nên chọn Chậm để xem rõ nha!"
+                        if (sg === "Nhanh") return "💡 Nhiều tấm rồi, chọn Nhanh cho phim mượt nha!"
+                        return ""
+                    }
+                    font.pixelSize: N.NeoConstants.fontCaption
+                    font.italic: true
+                    color: N.NeoConstants.warning
+                    opacity: 0
+                    Behavior on opacity { NumberAnimation { duration: 300 } }
+                    onVisibleChanged: opacity = visible ? 1 : 0
                 }
             }
         }
@@ -177,6 +383,61 @@ Item {
                 ToolTip.text: "Cần ít nhất 5 frame để tạo phim"
             }
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // T-005: Camera picker popup
+    // ---------------------------------------------------------------------------
+    CameraPickerPopup {
+        id: cameraPicker
+        onCameraConfirmed: function(index) {
+            // Live preview automatically updates via webcam_ready signal
+        }
+        onCancelled: {
+            // Nothing extra — camera unchanged
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // T-006: Speed feedback toast (bottom-right, 1.5s)
+    // ---------------------------------------------------------------------------
+    Rectangle {
+        id: speedFeedbackToast
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: N.NeoConstants.spacingL
+        width: toastText.implicitWidth + 24
+        height: 44
+        radius: 8
+        color: "#DD212121"
+        opacity: 0
+        visible: opacity > 0
+
+        property string message: ""
+
+        function show(label, fps) {
+            var labelVN = label === "Cham" ? "Chậm" : label === "Vua" ? "Vừa" : "Nhanh"
+            message = "Đã chọn: " + labelVN + " (" + fps + "fps)"
+            opacity = 1
+            hideTimer.restart()
+        }
+
+        Text {
+            id: toastText
+            anchors.centerIn: parent
+            anchors.margins: 12
+            text: speedFeedbackToast.message
+            font.pixelSize: N.NeoConstants.fontCaption
+            color: "#FFFFFF"
+        }
+
+        Timer {
+            id: hideTimer
+            interval: 1500
+            onTriggered: speedFeedbackToast.opacity = 0
+        }
+
+        Behavior on opacity { NumberAnimation { duration: 300 } }
     }
 
     // ---------------------------------------------------------------------------
@@ -226,6 +487,10 @@ Item {
         function onFrameUndone(newCount) {
             filmStrip.selectedIndex = 0
             filmStrip.refresh()
+        }
+        function onWebcamReady() {
+            // T-005: camera changed — restart live preview counter
+            N.AppState.previewCounter++
         }
     }
 

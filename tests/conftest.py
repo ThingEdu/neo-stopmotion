@@ -113,6 +113,9 @@ def _make_pyqt6_stubs() -> None:
         def height(self) -> int:
             return self._h
 
+        def size(self) -> "_QSize":  # noqa: N802
+            return _QSize(self._w, self._h)
+
         def copy(self) -> "_QImage":
             return self
 
@@ -132,8 +135,17 @@ def _make_pyqt6_stubs() -> None:
     qt_qml.QQmlApplicationEngine = MagicMock  # type: ignore[attr-defined]
 
     # QtQuick stub
+    class _QQuickImageProviderImageType:
+        Image = 1
+
+    class _QQuickImageProvider:
+        ImageType = _QQuickImageProviderImageType
+
+        def __init__(self, image_type: object = None) -> None:
+            pass
+
     qt_quick = ModuleType("PyQt6.QtQuick")
-    qt_quick.QQuickImageProvider = object  # type: ignore[attr-defined]
+    qt_quick.QQuickImageProvider = _QQuickImageProvider  # type: ignore[attr-defined]
 
     pyqt6_root = ModuleType("PyQt6")
     pyqt6_root.QtCore = qt_core  # type: ignore[attr-defined]

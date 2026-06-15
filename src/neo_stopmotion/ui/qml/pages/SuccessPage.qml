@@ -1,3 +1,4 @@
+// SuccessPage.qml — T-007 save-video: "Lưu video" + "Sao chép link" buttons
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -88,7 +89,7 @@ Item {
                 }
             }
 
-            // Right: QR + share URL
+            // Right: QR + share URL + action buttons (T-007)
             ColumnLayout {
                 Layout.preferredWidth: 420
                 Layout.fillHeight: true
@@ -104,8 +105,9 @@ Item {
 
                 Rectangle {
                     Layout.alignment: Qt.AlignHCenter
-                    Layout.preferredWidth: 360
-                    Layout.preferredHeight: 360
+                    // T-007: QR flexible height 280-360 to make room for buttons
+                    Layout.preferredWidth: 300
+                    Layout.preferredHeight: 300
                     color: "white"
                     border.color: N.NeoConstants.primary
                     border.width: 2
@@ -140,6 +142,119 @@ Item {
                     color: N.NeoConstants.textSecondary
                     horizontalAlignment: Text.AlignHCenter
                     wrapMode: Text.WrapAnywhere
+                    visible: root.mp4Path !== ""
+                }
+
+                // Spacer
+                Item { Layout.preferredHeight: N.NeoConstants.spacingM }
+
+                // -----------------------------------------------------------------
+                // T-007: "Lưu video" button — secondary (#1565C0)
+                // -----------------------------------------------------------------
+                Button {
+                    id: saveVideoBtn
+                    Layout.fillWidth: true
+                    height: 52
+
+                    // States: normal / loading / success / disabled
+                    property string btnState: root.mp4Path !== "" ? "normal" : "disabled"
+
+                    enabled: root.mp4Path !== "" && btnState !== "loading"
+
+                    text: {
+                        if (btnState === "loading") return "Đang lưu..."
+                        if (btnState === "success") return "✓  Đã lưu!"
+                        return "↓  Lưu video"
+                    }
+                    font.pixelSize: N.NeoConstants.fontCaption
+                    font.bold: true
+
+                    background: Rectangle {
+                        radius: 10
+                        opacity: saveVideoBtn.enabled ? 1.0 : 0.5
+                        color: {
+                            if (!saveVideoBtn.enabled) return "#9E9E9E"
+                            if (saveVideoBtn.btnState === "success") return N.NeoConstants.success
+                            if (saveVideoBtn.hovered) return "#0D47A1"
+                            return N.NeoConstants.secondary
+                        }
+                    }
+                    contentItem: Row {
+                        spacing: 8
+                        anchors.centerIn: parent
+                        BusyIndicator {
+                            visible: saveVideoBtn.btnState === "loading"
+                            running: saveVideoBtn.btnState === "loading"
+                            width: 18
+                            height: 18
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            text: saveVideoBtn.text
+                            font: saveVideoBtn.font
+                            color: "#FFFFFF"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    ToolTip.visible: hovered && !enabled
+                    ToolTip.text: "Chưa có phim để lưu"
+
+                    onClicked: _openSaveDialog()
+
+                    Timer {
+                        id: saveSuccessTimer
+                        interval: 1500
+                        onTriggered: saveVideoBtn.btnState = "normal"
+                    }
+                }
+
+                // -----------------------------------------------------------------
+                // T-007: "Sao chép link" button — visible only when shareUrl != ""
+                // -----------------------------------------------------------------
+                Button {
+                    id: copyLinkBtn
+                    Layout.fillWidth: true
+                    height: 52
+                    visible: root.shareUrl !== ""
+
+                    property bool copied: false
+
+                    text: copied ? "✓  Đã sao chép!" : "🔗  Sao chép link"
+                    font.pixelSize: N.NeoConstants.fontCaption
+                    font.bold: true
+
+                    background: Rectangle {
+                        radius: 10
+                        color: copyLinkBtn.hovered || copyLinkBtn.copied
+                            ? "#E3F2FD"
+                            : "transparent"
+                        border.color: copyLinkBtn.copied
+                            ? N.NeoConstants.success
+                            : N.NeoConstants.secondary
+                        border.width: 1
+                    }
+                    contentItem: Text {
+                        text: copyLinkBtn.text
+                        font: copyLinkBtn.font
+                        color: copyLinkBtn.copied
+                            ? N.NeoConstants.success
+                            : N.NeoConstants.secondary
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    onClicked: {
+                        appController.copy_link(root.shareUrl)
+                        copyLinkBtn.copied = true
+                        copySuccessTimer.restart()
+                    }
+
+                    Timer {
+                        id: copySuccessTimer
+                        interval: 1500
+                        onTriggered: copyLinkBtn.copied = false
+                    }
                 }
             }
         }
@@ -165,5 +280,89 @@ Item {
                 onClicked: appController.reset_session()
             }
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // T-007: save_video_result handler — show toast
+    // ---------------------------------------------------------------------------
+    Connections {
+        target: signalBusBridge
+        function onSaveVideoResult(success, message) {
+            if (message === "Đã sao chép link!") {
+                // Already handled by copyLinkBtn state
+                return
+            }
+            if (message === "__cancelled__") {
+                // User closed file dialog without choosing — just reset button
+                saveVideoBtn.btnState = "normal"
+                return
+            }
+            saveToast.show(success, message)
+            if (success) {
+                saveVideoBtn.btnState = "success"
+                saveSuccessTimer.restart()
+            } else {
+                saveVideoBtn.btnState = "normal"
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // T-007: Native file dialog + file copy trigger
+    // Note: QFileDialog cannot be called from QML directly across all platforms.
+    // We call a Python slot that opens QFileDialog in the main thread.
+    // ---------------------------------------------------------------------------
+    function _openSaveDialog() {
+        saveVideoBtn.btnState = "loading"
+        // Python opens QFileDialog (blocking, main thread) and handles copy async
+        appController.open_save_dialog(root.mp4Path)
+    }
+
+    // ---------------------------------------------------------------------------
+    // T-007: Toast notification (bottom-right)
+    // ---------------------------------------------------------------------------
+    Rectangle {
+        id: saveToast
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: N.NeoConstants.spacingL
+        width: Math.min(toastMsg.implicitWidth + 32, 480)
+        height: toastMsg.implicitHeight + 24
+        radius: 8
+        color: _isError ? "#E5C62828" : "#E5212121"
+        opacity: 0
+        visible: opacity > 0
+
+        property bool _isError: false
+        property string _message: ""
+
+        function show(success, msg) {
+            _isError = !success
+            _message = (success ? "✓  " : "⚠️  ") + msg
+            opacity = 0.9
+            toastHideTimer.interval = success ? 4000 : 6000
+            toastHideTimer.restart()
+        }
+
+        Text {
+            id: toastMsg
+            anchors {
+                left: parent.left
+                right: parent.right
+                verticalCenter: parent.verticalCenter
+                margins: 16
+            }
+            text: saveToast._message
+            font.pixelSize: N.NeoConstants.fontCaption
+            color: "#FFFFFF"
+            wrapMode: Text.WrapAnywhere
+        }
+
+        Timer {
+            id: toastHideTimer
+            onTriggered: saveToast.opacity = 0
+        }
+
+        Behavior on opacity { NumberAnimation { duration: 200 } }
     }
 }
