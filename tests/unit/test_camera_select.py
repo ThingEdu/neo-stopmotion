@@ -388,3 +388,28 @@ def test_ts12b_picker_counter_no_change_on_failed_probe():
     before = ctrl.pickerCounter
     ctrl.picker_probe_index(3)
     assert ctrl.pickerCounter == before  # unchanged
+
+
+# ---------------------------------------------------------------------------
+# Regression: synthetic fallback engine (no webcam_index) must not crash
+# the "Đổi camera" picker flow (bug 2026-06-16).
+# ---------------------------------------------------------------------------
+
+
+class _NoIndexEngine:
+    """Mimics SyntheticCaptureEngine: a capture engine WITHOUT webcam_index."""
+
+    def release(self) -> None:
+        pass
+
+
+def test_selected_index_when_engine_has_no_webcam_index():
+    """selected_index must return 0 (not raise AttributeError) for synthetic engine."""
+    sel = CameraSelector(current_capture=_NoIndexEngine())  # type: ignore[arg-type]
+    assert sel.selected_index == 0
+
+
+def test_cancel_selection_with_no_webcam_index_does_not_crash():
+    """Cancelling the picker with a synthetic engine must not raise."""
+    sel = CameraSelector(current_capture=_NoIndexEngine())  # type: ignore[arg-type]
+    sel.cancel_selection()  # must not raise

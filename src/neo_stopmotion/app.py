@@ -119,6 +119,21 @@ def run() -> int:
     configure_logging(log_dir=log_dir, debug=settings.app.debug)
     logger.info(f"Starting NeoStopMotion v{settings.app.version}")
 
+    # Kiosk safety: an unhandled exception inside a Qt slot/QML-invoked method
+    # makes PyQt6 call qFatal() → the whole app aborts (SIGABRT, no traceback).
+    # That must never happen on a children's station because of one bad click.
+    # Installing a custom sys.excepthook makes PyQt6 log the error and keep the
+    # event loop running instead of aborting.
+    import traceback as _traceback  # noqa: PLC0415
+
+    def _kiosk_excepthook(exc_type, exc_value, exc_tb):  # type: ignore[no-untyped-def]
+        logger.error(
+            "Unhandled exception in Qt slot (app kept alive):\n"
+            + "".join(_traceback.format_exception(exc_type, exc_value, exc_tb))
+        )
+
+    sys.excepthook = _kiosk_excepthook
+
     # Use QApplication (not QGuiApplication) to support QFileDialog (T-007).
     # Import here to avoid ImportError when conftest stubs PyQt6.QtWidgets.
     from PyQt6.QtWidgets import QApplication as _QApp  # noqa: PLC0415

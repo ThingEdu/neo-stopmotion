@@ -277,8 +277,13 @@ class AppController(QObject):
 
     @pyqtSlot(result=int)
     def get_current_webcam_index(self) -> int:
-        """Return the currently active webcam index (for QML)."""
-        return self._capture.webcam_index
+        """Return the currently active webcam index (for QML).
+
+        Falls back to 0 when the active engine has no webcam index (e.g.
+        SyntheticCaptureEngine when no usable webcam was found) — avoids a
+        crash when the user opens the camera picker.
+        """
+        return getattr(self._capture, "webcam_index", 0)
 
     # ------------------------------------------------------------------
     # T-007: Save video / copy link slots

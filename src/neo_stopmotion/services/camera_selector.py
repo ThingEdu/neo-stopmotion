@@ -56,8 +56,8 @@ class CameraSelector:
 
     @property
     def selected_index(self) -> int:
-        """Return the currently active webcam index."""
-        return self._current_capture.webcam_index
+        """Return the currently active webcam index (0 if engine has none, e.g. synthetic)."""
+        return getattr(self._current_capture, "webcam_index", 0)
 
     @staticmethod
     def next_index(current: int) -> int:
@@ -133,7 +133,10 @@ class CameraSelector:
     def cancel_selection(self) -> None:
         """Discard the probed camera; keep the existing capture engine."""
         self._release_probed()
-        logger.info("Camera selection cancelled — keeping index=%d", self._current_capture.webcam_index)
+        logger.info(
+            "Camera selection cancelled — keeping index=%d",
+            getattr(self._current_capture, "webcam_index", 0),
+        )
 
     def get_current_capture(self) -> CaptureEngine:
         """Return the active CaptureEngine (may have changed after confirm)."""

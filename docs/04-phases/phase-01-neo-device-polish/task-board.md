@@ -16,10 +16,10 @@
 ---
 
 ## Wave 1: NEO One Device Polish — 2 issue thiết bị thực
-| ID | Task | Owner | Status | Scope | Deps | Notes |
-|----|------|-------|--------|-------|------|-------|
-| T-001 | GStreamer H.264 codec — phim tự play trên NEO | devops | 🟣 REVIEW | app | - | Codec cài + app patch demote hw decoder (v4l2slh264dec). Chờ PO test autoplay trên GUI |
-| T-002 | Desktop launcher icon — icon ngoài màn hình XFCE | devops | 🟣 REVIEW | app | - | Launcher /home/neo/Desktop tạo, +x, owner neo. Chờ PO test bấm đúp |
+| ID    | Task                                             | Owner  | Status    | Scope | Deps | Notes                                                                                  |
+| ----- | ------------------------------------------------ | ------ | --------- | ----- | ---- | -------------------------------------------------------------------------------------- |
+| T-001 | GStreamer H.264 codec — phim tự play trên NEO    | devops | 🟣 REVIEW | app   | -    | Codec cài + app patch demote hw decoder (v4l2slh264dec). Chờ PO test autoplay trên GUI |
+| T-002 | Desktop launcher icon — icon ngoài màn hình XFCE | devops | 🟣 REVIEW | app   | -    | Launcher /home/neo/Desktop tạo, +x, owner neo. Chờ PO test bấm đúp                     |
 
 ---
 

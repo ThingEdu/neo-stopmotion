@@ -38,6 +38,11 @@ Item {
     // ---------------------------------------------------------------------------
     Component.onCompleted: _loadSessions()
 
+    // Safety net: if this page is popped/destroyed while a video is playing,
+    // stop + release the MediaPlayer first (destroying a live MediaPlayer can
+    // crash the Qt multimedia backend natively).
+    Component.onDestruction: _stopPlayer()
+
     function _loadSessions() {
         isLoading = true
         errorMessage = ""
@@ -160,7 +165,7 @@ Item {
                             }
                         }
                         leftPadding: 14; rightPadding: 14
-                        onClicked: Qt.quit() // placeholder — navigation handled by Keys
+                        onClicked: { _stopPlayer(); root.navigateBack() }
                     }
 
                     Button {
@@ -1054,10 +1059,9 @@ Item {
     }
 
     function _stopPlayer() {
-        if (isPlaying) {
-            videoPlayer.stop()
-            isPlaying = false
-        }
+        videoPlayer.stop()
+        videoPlayer.source = ""   // fully release pipeline before any destroy
+        isPlaying = false
     }
 
     function _togglePlay() {
