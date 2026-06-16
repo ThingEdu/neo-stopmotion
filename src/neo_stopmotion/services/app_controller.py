@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from loguru import logger
 from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal, pyqtSlot
 
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
 from neo_stopmotion.services.camera_selector import CameraSelector
 from neo_stopmotion.services.export_service import ExportService
+from neo_stopmotion.services.library_service import LibraryService
 from neo_stopmotion.services.session_service import SessionService
 from neo_stopmotion.services.speed_selector import SpeedSelector
 from neo_stopmotion.services.video_saver import VideoSaver
@@ -28,6 +31,7 @@ class AppController(QObject):
         export_service: ExportService | None = None,
         min_frames: int = 5,
         camera_selector: CameraSelector | None = None,
+        library_service: LibraryService | None = None,
     ) -> None:
         super().__init__()
         self._capture = capture
@@ -44,6 +48,8 @@ class AppController(QObject):
         self._picker_counter: int = 0
         # T-006: speed selector (default Vua / 8 fps)
         self.speed_selector = SpeedSelector()
+        # T-012: library service (injected from app.py)
+        self._library_service: LibraryService | None = library_service
         self._bus.uart_command_received.connect(self.handle_uart_command)
         self._bus.export_completed.connect(self._on_export_completed)
 
@@ -172,6 +178,22 @@ class AppController(QObject):
         status_message so the UI can show a friendly alert without crashing.
         """
         self._do_delete_frame(n)
+
+    @pyqtSlot(int)
+    def delete_frame_smart(self, selected_index: int) -> None:
+        """Delete logic: if selected_index > 0, delete that frame; otherwise delete last.
+
+        selected_index is 1-based (0 means nothing selected).
+        Called by keyboard Delete key handler in QML (T-011 AC1/AC7).
+        """
+        frame_count = self._session.frame_manager.frame_count
+        if frame_count == 0:
+            return
+        if selected_index > 0 and selected_index <= frame_count:
+            self._do_delete_frame(selected_index)
+        else:
+            # No selection → delete last frame
+            self._do_delete_frame(frame_count)
 
     def _do_delete_frame(self, n: int) -> None:
         """Delete frame n (1-based), emit frame_deleted(new_count), log."""
@@ -304,3 +326,82 @@ class AppController(QObject):
             self._bus.save_video_result.emit(False, "__cancelled__")
             return
         self.save_video(mp4_path, dest_dir)
+
+    # ------------------------------------------------------------------
+    # T-012: Library service slots
+    # ------------------------------------------------------------------
+
+    @pyqtSlot(result="QVariantList")
+    def library_list_sessions(self) -> list[object]:
+        """QML slot: scan projects_dir and return session list as QVariantList.
+
+        Returns list of dicts (QVariantMap) — each dict is a LibraryEntry.to_qml_dict().
+        Returns empty list + logs error if projects_dir unreadable.
+        """
+        if self._library_service is None:
+            logger.warning("library_list_sessions called but LibraryService not configured")
+            return []
+        try:
+            entries = self._library_service.list_sessions()
+            return [e.to_qml_dict() for e in entries]
+        except OSError as e:
+            logger.error(f"library_list_sessions failed: {e}")
+            self._bus.status_message.emit("error", str(e))
+            return []
+
+    @pyqtSlot(str, result="bool")
+    def library_delete_session(self, session_id: str) -> bool:
+        """QML slot: delete session by id. Returns True on success, False on failure."""
+        if self._library_service is None:
+            logger.warning("library_delete_session called but LibraryService not configured")
+            return False
+        try:
+            self._library_service.delete_session(session_id)
+            logger.info(f"library_delete_session: deleted {session_id}")
+            return True
+        except (OSError, ValueError) as e:
+            logger.error(f"library_delete_session failed for {session_id}: {e}")
+            self._bus.status_message.emit("error", str(e))
+            return False
+
+    @pyqtSlot(str, str, str)
+    def library_save_session(self, mp4_path: str, gif_path: str, qr_path: str) -> None:
+        """QML slot: open save dialog and copy session files to chosen directory.
+
+        Copies mp4 + gif (if exists) + qr (if exists) to user-chosen dir.
+        Emits save_video_result on SignalBus.
+        """
+        from PyQt6.QtWidgets import QFileDialog
+        dest_dir = QFileDialog.getExistingDirectory(
+            None,
+            "Chọn thư mục lưu phim",
+            "",
+        )
+        if not dest_dir:
+            self._bus.save_video_result.emit(False, "__cancelled__")
+            return
+
+        import shutil as _shutil
+        import threading as _threading
+        dest = Path(dest_dir)
+
+        def _run() -> None:
+            try:
+                copied: list[str] = []
+                for p in (mp4_path, gif_path, qr_path):
+                    if p:
+                        src = Path(p)
+                        if src.exists():
+                            _shutil.copy2(str(src), str(dest / src.name))
+                            copied.append(src.name)
+                msg = f"Đã lưu phim ra {dest}!"
+                self._bus.save_video_result.emit(True, msg)
+                logger.info(f"library_save_session: copied {copied} to {dest}")
+            except PermissionError:
+                self._bus.save_video_result.emit(
+                    False, "Không đủ quyền lưu tại thư mục đó. Chọn thư mục khác nhé!"
+                )
+            except OSError as exc:
+                self._bus.save_video_result.emit(False, f"Lưu không thành công: {exc}")
+
+        _threading.Thread(target=_run, daemon=True).start()

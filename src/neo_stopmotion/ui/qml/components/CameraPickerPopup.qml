@@ -161,6 +161,39 @@ Popup {
             root._cancel()
             event.accepted = true
         }
+        Keys.onReturnPressed: function(event) {
+            if (root.isAvailable && !root.isLoading) {
+                root._confirm()
+                event.accepted = true
+            }
+        }
+        Keys.onEnterPressed: function(event) {
+            if (root.isAvailable && !root.isLoading) {
+                root._confirm()
+                event.accepted = true
+            }
+        }
+        Keys.onLeftPressed: function(event) {
+            if (!root.isLoading) {
+                root._goPrev()
+                event.accepted = true
+            }
+        }
+        Keys.onRightPressed: function(event) {
+            if (!root.isLoading) {
+                root._goNext()
+                event.accepted = true
+            }
+        }
+        Keys.onPressed: function(event) {
+            // 1–6: jump directly to camera index
+            if (event.key >= Qt.Key_1 && event.key <= Qt.Key_6) {
+                var idx = event.key - Qt.Key_1  // 0-based
+                root.currentIndex = idx
+                root._probeIndex(idx)
+                event.accepted = true
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent
@@ -171,31 +204,70 @@ Popup {
             RowLayout {
                 Layout.fillWidth: true
 
-                Text {
-                    text: "Chọn camera"
-                    font.pixelSize: N.NeoConstants.fontBody
-                    font.bold: true
-                    color: N.NeoConstants.textPrimary
+                // Icon + title (mockup 03 style)
+                RowLayout {
+                    spacing: 12
+                    Rectangle {
+                        width: 44
+                        height: 44
+                        radius: 12
+                        color: "#E3F0FF"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "📷"
+                            font.pixelSize: 24
+                        }
+                    }
+                    Text {
+                        text: "Chọn máy ảnh"
+                        font.pixelSize: N.NeoConstants.fontBody
+                        font.bold: true
+                        color: N.NeoConstants.textPrimary
+                    }
                     Layout.fillWidth: true
                 }
 
+                Item { Layout.fillWidth: true }
+
                 Button {
-                    text: "Huỷ"
-                    width: 80
-                    height: 36
+                    height: 46
                     font.pixelSize: N.NeoConstants.fontCaption
+                    font.bold: true
                     onClicked: root._cancel()
                     background: Rectangle {
-                        radius: 8
-                        color: parent.hovered ? "#CCCCCC" : "#E0E0E0"
+                        radius: 12
+                        color: parent.hovered ? "#CCCCCC" : "#FFFFFF"
+                        border.color: "#dddddd"
+                        border.width: 2
                     }
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: N.NeoConstants.textPrimary
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                    contentItem: RowLayout {
+                        spacing: 6
+                        Text {
+                            text: "✕ Huỷ"
+                            font.pixelSize: N.NeoConstants.fontCaption
+                            font.bold: true
+                            color: N.NeoConstants.textSecondary
+                        }
+                        Rectangle {
+                            width: escKbd.implicitWidth + 10
+                            height: 20
+                            radius: 5
+                            color: "#FFFFFF"
+                            border.color: "#D8C9A8"
+                            border.width: 1
+                            Text {
+                                id: escKbd
+                                anchors.centerIn: parent
+                                text: "Esc"
+                                font.pixelSize: 11
+                                font.bold: true
+                                font.family: "monospace"
+                                color: "#7a6200"
+                            }
+                        }
                     }
+                    leftPadding: 14
+                    rightPadding: 14
                 }
             }
 
@@ -290,61 +362,120 @@ Popup {
                 }
             }
 
-            // Camera indicator "Camera N / 6"
+            // Camera indicator "Máy ảnh N / 6" (mockup 03 style)
             Text {
                 Layout.alignment: Qt.AlignHCenter
                 visible: !root.noCamera
-                text: "Camera " + (root.currentIndex + 1) + " / 6"
+                text: "Máy ảnh " + (root.currentIndex + 1) + " / 6"
                 font.pixelSize: N.NeoConstants.fontBody
                 font.bold: true
                 color: N.NeoConstants.textPrimary
             }
 
-            // Navigation buttons
+            // Navigation buttons + dot indicators (mockup 03)
             RowLayout {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 spacing: N.NeoConstants.spacingM
                 visible: !root.noCamera
 
                 Button {
-                    text: "◄ Camera trước"
-                    width: 190
-                    height: 52
+                    Layout.fillWidth: true
+                    height: 64
                     font.pixelSize: N.NeoConstants.fontCaption
                     font.bold: true
                     enabled: !root.isLoading
                     onClicked: root._goPrev()
+
                     background: Rectangle {
-                        radius: 10
-                        color: parent.hovered ? "#CCCCCC" : "#E0E0E0"
+                        radius: 16
+                        color: parent.hovered ? Qt.lighter(N.NeoConstants.secondary, 1.8) : "#FFFFFF"
+                        border.color: N.NeoConstants.secondary
+                        border.width: 2
                     }
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: N.NeoConstants.textPrimary
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                    contentItem: RowLayout {
+                        spacing: 8
+                        anchors.centerIn: parent
+                        Rectangle {
+                            width: prevKbd.implicitWidth + 10
+                            height: 22
+                            radius: 5
+                            color: "#FFFFFF"
+                            border.color: "#c9d3dd"
+                            border.width: 1
+                            Text {
+                                id: prevKbd
+                                anchors.centerIn: parent
+                                text: "◀"
+                                font.pixelSize: 12
+                                font.bold: true
+                                font.family: "monospace"
+                                color: N.NeoConstants.secondary
+                            }
+                        }
+                        Text {
+                            text: "Máy trước"
+                            font.pixelSize: N.NeoConstants.fontCaption
+                            font.bold: true
+                            color: N.NeoConstants.secondary
+                        }
+                    }
+                }
+
+                // Dot indicators
+                Row {
+                    spacing: 8
+                    Repeater {
+                        model: 6
+                        delegate: Rectangle {
+                            width: index === root.currentIndex ? 30 : 12
+                            height: 12
+                            radius: index === root.currentIndex ? 6 : 6
+                            color: index === root.currentIndex ? N.NeoConstants.secondary : "#dddddd"
+                            Behavior on width { NumberAnimation { duration: 150 } }
+                        }
                     }
                 }
 
                 Button {
-                    text: "Camera tiếp ►"
-                    width: 190
-                    height: 52
+                    Layout.fillWidth: true
+                    height: 64
                     font.pixelSize: N.NeoConstants.fontCaption
                     font.bold: true
                     enabled: !root.isLoading
                     onClicked: root._goNext()
+
                     background: Rectangle {
-                        radius: 10
-                        color: parent.hovered ? "#CCCCCC" : "#E0E0E0"
+                        radius: 16
+                        color: parent.hovered ? Qt.lighter(N.NeoConstants.secondary, 1.8) : "#FFFFFF"
+                        border.color: N.NeoConstants.secondary
+                        border.width: 2
                     }
-                    contentItem: Text {
-                        text: parent.text
-                        font: parent.font
-                        color: N.NeoConstants.textPrimary
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
+                    contentItem: RowLayout {
+                        spacing: 8
+                        anchors.centerIn: parent
+                        Text {
+                            text: "Máy tiếp"
+                            font.pixelSize: N.NeoConstants.fontCaption
+                            font.bold: true
+                            color: N.NeoConstants.secondary
+                        }
+                        Rectangle {
+                            width: nextKbd.implicitWidth + 10
+                            height: 22
+                            radius: 5
+                            color: "#FFFFFF"
+                            border.color: "#c9d3dd"
+                            border.width: 1
+                            Text {
+                                id: nextKbd
+                                anchors.centerIn: parent
+                                text: "▶"
+                                font.pixelSize: 12
+                                font.bold: true
+                                font.family: "monospace"
+                                color: N.NeoConstants.secondary
+                            }
+                        }
                     }
                 }
             }
@@ -371,33 +502,95 @@ Popup {
                 }
             }
 
-            // Confirm button
+            // Confirm button (mockup 03: blue gradient + Enter kbd badge)
             Button {
                 id: confirmBtn
                 Layout.fillWidth: true
-                height: 56
+                height: 72
                 visible: !root.noCamera
                 enabled: root.isAvailable && !root.isLoading
-                text: "CHỌN CAMERA NÀY"
                 font.pixelSize: N.NeoConstants.fontButton
                 font.bold: true
                 onClicked: root._confirm()
 
                 background: Rectangle {
-                    radius: 12
-                    color: {
-                        if (!confirmBtn.enabled) return "#9E9E9E"
-                        if (confirmBtn.hovered) return "#E64A19"
-                        return N.NeoConstants.primary
+                    radius: 18
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: confirmBtn.enabled ? "#1565C0" : "#9E9E9E" }
+                        GradientStop { position: 1.0; color: confirmBtn.enabled ? "#1E88E5" : "#9E9E9E" }
                     }
                     opacity: confirmBtn.enabled ? 1.0 : 0.6
                 }
-                contentItem: Text {
-                    text: confirmBtn.text
-                    font: confirmBtn.font
-                    color: "#FFFFFF"
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                contentItem: RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 12
+
+                    Text {
+                        text: "✓ DÙNG MÁY ẢNH NÀY"
+                        font.pixelSize: N.NeoConstants.fontButton
+                        font.bold: true
+                        color: "#FFFFFF"
+                    }
+                    Rectangle {
+                        width: confirmKbd.implicitWidth + 10
+                        height: 24
+                        radius: 6
+                        color: "#FFFFFF"
+                        border.color: "#FFFFFF"
+                        border.width: 1
+                        Text {
+                            id: confirmKbd
+                            anchors.centerIn: parent
+                            text: "Enter"
+                            font.pixelSize: 12
+                            font.bold: true
+                            font.family: "monospace"
+                            color: N.NeoConstants.secondary
+                        }
+                    }
+                }
+            }
+
+            // Key hint legend (mockup 03 bottom)
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 18
+                visible: !root.noCamera
+
+                Repeater {
+                    model: [
+                        { keys: "◀  ▶", desc: "đổi máy" },
+                        { keys: "1–6",  desc: "chọn nhanh" },
+                        { keys: "Enter",desc: "xác nhận" },
+                        { keys: "Esc",  desc: "huỷ" }
+                    ]
+                    delegate: RowLayout {
+                        spacing: 6
+                        Rectangle {
+                            width: kbdHintLabel.implicitWidth + 10
+                            height: 20
+                            radius: 5
+                            color: "#FFFFFF"
+                            border.color: "#c9d3dd"
+                            border.width: 1
+                            Text {
+                                id: kbdHintLabel
+                                anchors.centerIn: parent
+                                text: modelData.keys
+                                font.pixelSize: 11
+                                font.bold: true
+                                font.family: "monospace"
+                                color: N.NeoConstants.secondary
+                            }
+                        }
+                        Text {
+                            text: modelData.desc
+                            font.pixelSize: 13
+                            font.bold: true
+                            color: N.NeoConstants.textSecondary
+                        }
+                    }
                 }
             }
         }

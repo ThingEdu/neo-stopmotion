@@ -17,6 +17,7 @@ from neo_stopmotion.hardware.uart_simulator import UARTSimulator
 from neo_stopmotion.services.app_controller import AppController
 from neo_stopmotion.services.camera_selector import CameraSelector
 from neo_stopmotion.services.export_service import ExportService
+from neo_stopmotion.services.library_service import LibraryService
 from neo_stopmotion.services.session_service import SessionService
 from neo_stopmotion.ui.image_provider import PreviewImageProvider
 from neo_stopmotion.ui.picker_image_provider import PickerImageProvider
@@ -121,6 +122,12 @@ def run() -> int:
     # Use QApplication (not QGuiApplication) to support QFileDialog (T-007).
     # Import here to avoid ImportError when conftest stubs PyQt6.QtWidgets.
     from PyQt6.QtWidgets import QApplication as _QApp  # noqa: PLC0415
+    # Force a non-native Qt Quick Controls style so custom background/contentItem
+    # render identically on macOS + NEO Linux (native macOS style ignores them →
+    # buttons would not match the approved mockup). Must be set before controls
+    # are instantiated. See wave-3 style warning.
+    os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
+
     app = _QApp(sys.argv)
     app.setApplicationName("NeoStopMotion")
     app.setOrganizationName("MakerViet")
@@ -184,12 +191,19 @@ def run() -> int:
     if not use_synthetic:
         camera_selector = CameraSelector(current_capture=capture)
 
+    # T-012: LibraryService (scans projects_dir for completed sessions)
+    library_service = LibraryService(
+        projects_dir=projects_dir,
+        max_sessions=settings.storage.max_sessions,
+    )
+
     controller = AppController(
         capture=capture,
         session=session,
         export_service=export_service,
         min_frames=settings.export.min_frames,
         camera_selector=camera_selector,
+        library_service=library_service,
     )
 
     uart_mode = settings.uart.port
@@ -240,6 +254,24 @@ def run() -> int:
     if not engine.rootObjects():
         logger.error("Failed to load QML")
         return 1
+
+    # Dev/QA affordance: grab the window to a PNG then quit (works with the
+    # offscreen platform for headless visual checks). Set NEO_STOPMOTION_GRAB=path
+    # and optionally NEO_STOPMOTION_GRAB_DELAY_MS (default 3500, lets splash pass).
+    grab_path = os.environ.get("NEO_STOPMOTION_GRAB", "")
+    if grab_path:
+        _win = engine.rootObjects()[0]
+        _grab_delay = int(os.environ.get("NEO_STOPMOTION_GRAB_DELAY_MS", "3500"))
+
+        def _grab_and_quit() -> None:
+            try:
+                _win.grabWindow().save(grab_path)
+                logger.info(f"Saved window grab to {grab_path}")
+            except Exception as exc:  # noqa: BLE001
+                logger.error(f"Window grab failed: {exc}")
+            app.quit()
+
+        QTimer.singleShot(_grab_delay, _grab_and_quit)
 
     # Auto-test mode: fires N SHOOT commands then EXPORT then waits 12s and quits.
     autoshoot = int(os.environ.get("NEO_STOPMOTION_AUTOSHOOT", "0"))

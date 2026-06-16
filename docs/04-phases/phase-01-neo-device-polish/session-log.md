@@ -4,6 +4,45 @@
 
 ---
 
+## Session 2026-06-16 — Wave-4: Redesign toàn bộ UI + phím tắt + Thư viện phim
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE.
+
+### Bối cảnh
+- PO yêu cầu redesign toàn bộ giao diện cho dễ dùng (trẻ 6-14). Coordinator sinh mockup HTML 6 màn + 3 variant Capture (`docs/03-codebase/design/brand/html-mockups/`, có `_gallery.html` so sánh).
+- PO chốt **Variant B "Cột phải"**.
+- PO chốt mô hình điều khiển: **3 nút cốt lõi** (Chụp/Xoá/Tạo phim = IO1/IO2/IO3) + **bàn phím đủ phím tắt** cho mọi tính năng; mọi màn thao tác 100% bằng bàn phím.
+- PO yêu cầu thêm tính năng **Thư viện phim** (mở/duyệt/xem lại phim đã làm + đầy đủ thông tin) — mockup 07.
+- PO nhấn mạnh: **thành phẩm phải bám sát mockup**, và **test cẩn thận** (tính năng + phím tắt).
+
+### Đã làm (Gate 2 — wave structure)
+- Tạo `wave-4/` + 6 task card T-009..T-014 + `design-ref.md` (chốt Variant B + mockup là nguồn chân lý).
+- T-008 (preview bé) → SUPERSEDED, gộp vào T-010.
+- Cập nhật task-board, con trỏ phase → wave-4.
+
+### Kế hoạch thực thi
+1. T-009 (ba) spec Thư viện — song song T-010/T-011 (python-dev) redesign Capture B + phím tắt.
+2. T-012 (python-dev) Thư viện phim (sau T-009 + T-010/011).
+3. T-013 (qa) test toàn bộ + test guide. 4. T-014 (architect) gate → ship-to-main.
+
+### Đã thực thi trong phiên
+- **T-009** spec film-library (ba) ✅; **T-010** redesign CapturePage Variant B, **T-011** phím tắt đầy đủ + help overlay, **T-012** Thư viện phim (LibraryService + LibraryPage + nav) ✅ — đều REVIEW.
+- Test: 118 pass (2 lỗi qtbot pre-existing) + 7 test phím tắt + 21 test library.
+- **Build & deploy lên NEO thật** (`192.168.31.50`, user neo, Debian 12 aarch64) qua wheel v1.0.1 (`pip install --break-system-packages`).
+- **Bug QML thật phát hiện khi render thật + tự chụp màn hình, đã sửa**:
+  1. KeyboardShortcutsOverlay tên component sai (`_ShortcutRow`) → app không load.
+  2. 22 chỗ màu CSS `"rgba()"` → hex ARGB.
+  3. `letterSpacing` → `font.letterSpacing` (5 chỗ).
+  4. Ép `QT_QUICK_CONTROLS_STYLE=Basic` (nút custom render đúng macOS + NEO).
+  5. Delete dialog Keys gắn Popup root → đưa vào FocusScope (xoá khối trùng → 0 cảnh báo).
+  6. Rail CapturePage không khoá 300px → khoá min/max=300, preview chiếm phần còn lại.
+  7. **Highlight tốc độ** không đổi → bind `AppState.selectedSpeedLabel` (phản ứng) cho cả phím 1/2/3 + chuột.
+  8. **Thư viện phim** nút đè info + video không phát → dùng `Layout.preferredHeight` cho player/info/nút → hết đè + video phát được.
+- Thêm affordance `NEO_STOPMOTION_GRAB` (chụp window qua Qt offscreen) cho QA headless.
+
+### Next
+- T-013 QA toàn diện (phím tắt + đối chiếu mockup + hồi quy) → T-014 Architect gate → ship-to-main (code-only).
+
 ## Session 2026-06-15 (c) — SESSION END: State of the Union
 
 **Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01.

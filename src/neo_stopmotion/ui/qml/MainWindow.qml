@@ -19,17 +19,25 @@ ApplicationWindow {
         initialItem: splashComponent
         focus: true
 
+        // Global key handler — cốt lõi 3 phím IO (T-011 AC1)
+        // CapturePage handles its own extended keys (C, G, 1/2/3, ?, arrows).
+        // Space and Enter are kept here so they work on any page in the stack.
+        // T-012: LibraryPage overrides Enter/Space for player — skip global handler when on Library.
         Keys.onPressed: function(event) {
+            // Don't forward SHOOT/EXPORT commands when LibraryPage is active
+            var onLibrary = stack.currentItem && stack.currentItem.toString().indexOf("LibraryPage") !== -1
+            if (onLibrary) {
+                return  // LibraryPage handles all keys itself
+            }
             if (event.key === Qt.Key_Space) {
                 appController.handle_uart_command("SHOOT")
-                event.accepted = true
-            } else if (event.key === Qt.Key_Z) {
-                appController.handle_uart_command("UNDO")
                 event.accepted = true
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 appController.handle_uart_command("EXPORT")
                 event.accepted = true
             }
+            // Note: Delete key is handled per-page (CapturePage: smart delete;
+            // SuccessPage: no-op at stack level so page handles it).
         }
     }
 
@@ -42,7 +50,21 @@ ApplicationWindow {
 
     Component {
         id: capturePageComponent
-        Pages.CapturePage { }
+        Pages.CapturePage {
+            onNavigateToLibrary: {
+                stack.push(libraryPageComponent)
+            }
+        }
+    }
+
+    // T-012: LibraryPage component
+    Component {
+        id: libraryPageComponent
+        Pages.LibraryPage {
+            onNavigateBack: {
+                stack.pop()
+            }
+        }
     }
 
     Component {
@@ -52,7 +74,11 @@ ApplicationWindow {
 
     Component {
         id: successPageComponent
-        Pages.SuccessPage { }
+        Pages.SuccessPage {
+            onNavigateToLibrary: {
+                stack.push(libraryPageComponent)
+            }
+        }
     }
 
     Connections {

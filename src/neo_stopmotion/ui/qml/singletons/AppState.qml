@@ -11,6 +11,7 @@ QtObject {
     property string currentTitle: ""
     property string warningBanner: ""
     property string errorBanner: ""
+    property string selectedSpeedLabel: "Vua"  // Cham | Vua | Nhanh — for speed segment highlight
 
     // Computed
     readonly property real durationSeconds: frameCount / 10.0
