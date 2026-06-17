@@ -4,6 +4,36 @@
 
 ---
 
+## Session 2026-06-16 (END) — State of the Union
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-4.
+
+### Làm được trong phiên
+- **Redesign toàn bộ UI**: sinh mockup HTML 6 màn + 3 variant Capture (`docs/03-codebase/design/brand/html-mockups/`, có `_gallery.html`). **PO chốt Variant B.**
+- **Mô hình điều khiển** (PO chốt): 3 nút cốt lõi (Chụp/Xoá/Tạo phim = IO1/IO2/IO3) + bàn phím đủ phím tắt; mọi màn thao tác 100% bằng bàn phím.
+- **Wave-4 implement**: T-009 spec Thư viện (ba) ✅; T-010 Capture Variant B, T-011 phím tắt + overlay, T-012 Thư viện phim (LibraryService + LibraryPage + nav) ✅ — đều REVIEW.
+- **Deploy NEO thật** (`192.168.31.50`, thingedges-neo-1, Debian 12 aarch64) qua wheel v1.0.1; xác minh trực tiếp trên thiết bị (chụp màn hình qua xdotool).
+- **Sửa nhiều bug QML/render** (phát hiện bằng render thật + tự chụp): tên component sai, rgba()→hex, letterSpacing→font.letterSpacing, ép QT_QUICK_CONTROLS_STYLE=Basic, khoá rail 300px (preview lại hiện), highlight tốc độ phản ứng, layout Thư viện (Layout.preferredHeight) + video phát được.
+- **Sửa crash**: (1) Đổi camera AttributeError với synthetic engine; (2) nút "Quay lại" Thư viện gọi nhầm `Qt.quit()` → thoát app. Thêm `sys.excepthook` kiosk-safe + faulthandler. 120 test PASS.
+
+### Commit (nhánh team, CHƯA lên main)
+- `e496c27` — redesign Variant B + phím tắt + Thư viện phim.
+- `9d5ee6b` — lô fix crash + excepthook.
+
+### Trạng thái task
+- T-009/010/011/012: 🟣 REVIEW. T-013 (QA), T-014 (Architect): ⚪ TODO.
+- T-001/002/005/006/007: 🟣 REVIEW (chờ PO test). T-003/004: 🟢 DONE. T-008: SUPERSEDED.
+
+### Next actions
+1. **Deploy bản mới nhất lên NEO** (NEO đang chạy bản trước lô fix `9d5ee6b`) — chờ PO cắm điện lại.
+2. **T-013 QA toàn diện** (phím tắt + đối chiếu mockup + hồi quy) → **T-014 Architect gate**.
+3. Sau Architect PASS → `ship-to-main.sh` (code-only) → PO tạo PR.
+
+### Blockers
+- Không. (NEO tạm offline do PO rút điện — không phải lỗi.)
+
+---
+
 ## Session 2026-06-16 — Wave-4: Redesign toàn bộ UI + phím tắt + Thư viện phim
 
 **Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE.
