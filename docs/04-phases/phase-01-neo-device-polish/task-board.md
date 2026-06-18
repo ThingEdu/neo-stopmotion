@@ -1,12 +1,12 @@
 # Task Board — Phase: phase-01-neo-device-polish
 
-> **Cập nhật**: 2026-06-16
+> **Cập nhật**: 2026-06-19
 
 ## Tổng quan
 | Metric | Count |
 |--------|-------|
-| Tổng task | 14 |
-| ⚪ TODO | 6 |
+| Tổng task | 17 |
+| ⚪ TODO | 9 |
 | 🔵 IN_PROGRESS | 0 |
 | 🔴 BLOCKED | 0 |
 | 🟣 REVIEW | 5 |
@@ -58,6 +58,18 @@
 | T-012 | Thư viện phim: LibraryService + LibraryPage + nav | python-dev | 🟣 REVIEW | app | T-009,T-010,T-011 | 21 test PASS. LibraryService + LibraryPage + nav G/Esc. Chờ PO test GUI |
 | T-013 | QA test toàn bộ + test guide PO | qa | ⚪ TODO | app | T-010,T-011,T-012 | Bảng phím tắt + đối chiếu mockup↔GUI |
 | T-014 | Architect gate PASS/FAIL pre-merge | architect | ⚪ TODO | app | T-010..T-013 | - |
+
+---
+
+## Wave 5: Fix màn "Chọn camera" — enumerate thật + hot-plug + wording
+> PO duyệt 2026-06-19. Reproduce-first: T-015 QA viết test FAIL trước, T-016 dev fix → PASS.
+> Ràng buộc cứng: TUYỆT ĐỐI không quét nền liên tục; timer chỉ chạy khi popup MỞ + no-camera.
+
+| ID | Task | Owner | Status | Scope | Deps | Notes |
+|----|------|-------|--------|-------|------|-------|
+| T-015 | QA reproduce-first: camera enumerate bug + wording | qa | ⚪ TODO | app | - | 5 test FAIL đúng lý do trước khi fix |
+| T-016 | Fix enumerate thật + hot-plug guard + đổi chữ Camera | python-dev | ⚪ TODO | app | T-015 | list_available_indices() + slot + QML dynamic model + Timer guard + wording |
+| T-017 | Architect gate PASS/FAIL wave-5 | architect | ⚪ TODO | app | T-015,T-016 | Gate trước ship-to-main |
 
 ---
 

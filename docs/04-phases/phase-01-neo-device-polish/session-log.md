@@ -4,6 +4,40 @@
 
 ---
 
+## Session 2026-06-19 — Wave-5: Fix màn "Chọn camera"
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-5.
+
+### Bối cảnh
+PO duyệt kế hoạch sửa màn "Chọn camera" với 3 nhóm vấn đề:
+1. **Bug enumerate**: picker hardcode 6 ô (% 6, model: 6) thay vì quét camera thật → máy 1 camera vẫn thấy 6 ô
+2. **Hot-plug**: cắm camera khi đang mở popup → không tự phát hiện; thiếu nút "Quét lại"
+3. **Wording**: "Máy ảnh" → "Camera" toàn bộ
+
+Điều tra kỹ thuật đã xong (context từ PO): gốc rễ ở `CameraPickerPopup.qml` (hardcode) +
+`camera_selector.py` (thiếu `list_available_indices()`). Ràng buộc cứng: KHÔNG quét nền liên tục;
+timer chỉ chạy khi popup MỞ VÀ no-camera state.
+
+### Đã làm (Gate 2 — wave structure)
+- Tạo `wave-5/` + 3 task card T-015..T-017 + `test-guide.md`
+- Cập nhật `task-board.md` (thêm Wave 5, tổng task 14→17, TODO 6→9)
+- Cập nhật `claude-active-phase.md` (wave-4→wave-5)
+
+### Task cards tạo
+| ID | Task | Owner | Status |
+|----|------|-------|--------|
+| T-015 | QA reproduce-first: 5 test FAIL trước fix | qa | ⚪ TODO |
+| T-016 | Fix enumerate + hot-plug + wording | python-dev | ⚪ TODO |
+| T-017 | Architect gate wave-5 | architect | ⚪ TODO |
+
+### Next actions
+1. Fire QA → T-015 (reproduce tests FAIL)
+2. Sau T-015 commit → Fire python-dev → T-016 (implement, test FAIL→PASS)
+3. Sau T-016 DONE → Fire Architect → T-017 gate
+4. PASS → `ship-to-main.sh` → PO tạo PR
+
+---
+
 ## Session 2026-06-16 (END) — State of the Union
 
 **Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-4.
