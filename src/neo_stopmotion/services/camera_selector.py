@@ -92,6 +92,46 @@ class CameraSelector:
                 return True
         return False
 
+    def list_available_indices(self) -> list[int]:
+        """Return a list of working camera indices (0..MAX_INDEX-1).
+
+        Probes each index quickly (retry_delay_seconds=0) so the full scan
+        completes in under 1 second even on slow hardware.  Releases every
+        tested camera immediately; does NOT store state in self._probed_cap.
+
+        Returns an empty list when no camera is found.
+        """
+        available: list[int] = []
+        for idx in range(MAX_INDEX):
+            cap, ok = self._try_open_fast(idx)
+            if ok:
+                available.append(idx)
+            if cap is not None:
+                try:
+                    cap.release()
+                except Exception:  # noqa: BLE001
+                    pass
+        logger.debug(f"list_available_indices → {available}")
+        return available
+
+    def _try_open_fast(self, index: int) -> tuple[CaptureEngine | None, bool]:
+        """Like _try_open_index but with retry_delay_seconds=0 for fast enumeration."""
+        from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
+
+        cap = CaptureEngine(webcam_index=index, retry_count=1, retry_delay_seconds=0.0)
+        try:
+            cap.open()
+            if not cap.is_open:
+                return None, False
+            return cap, True
+        except CaptureError as e:
+            logger.debug(f"Fast probe index {index} unavailable: {e}")
+            try:
+                cap.release()
+            except Exception:  # noqa: BLE001
+                pass
+            return None, False
+
     def get_probed_preview(self) -> object:
         """Return a live preview frame (numpy array) from the probed camera, or None."""
         if self._probed_cap is None:

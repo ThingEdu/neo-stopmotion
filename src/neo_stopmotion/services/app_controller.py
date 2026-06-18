@@ -275,6 +275,26 @@ class AppController(QObject):
         sel = self._get_camera_selector()
         sel.cancel_selection()
 
+    @pyqtSlot(result="QVariantList")
+    def get_available_camera_indices(self) -> list[int]:
+        """Return a list of working camera indices for QML to use as a dynamic model.
+
+        Performs a fast enumerate scan (retry_delay_seconds=0) via
+        CameraSelector.list_available_indices().  Returns [0] as fallback
+        when no CameraSelector is available (e.g. synthetic/sim mode) so
+        the picker always shows at least one slot rather than crashing.
+
+        Called by CameraPickerPopup.qml on open to populate the dot indicators
+        and navigation model instead of the old hardcoded model:6.
+        """
+        if self._camera_selector is None:
+            # Synthetic / sim mode — no real cameras; return [0] as safe default
+            logger.debug("get_available_camera_indices: no selector (sim mode) → [0]")
+            return [0]
+        result = self._camera_selector.list_available_indices()
+        logger.debug(f"get_available_camera_indices → {result}")
+        return result
+
     @pyqtSlot(result=int)
     def get_current_webcam_index(self) -> int:
         """Return the currently active webcam index (for QML).

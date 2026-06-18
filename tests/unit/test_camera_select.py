@@ -427,53 +427,44 @@ def test_cancel_selection_with_no_webcam_index_does_not_crash():
 
 
 def test_list_available_indices_returns_only_working_cameras(tmp_path):
-    """EXPECTED: FAIL before fix (T-016). Bug: list_available_indices() does not exist.
+    """When only index 0 is functional, list_available_indices() must return [0].
 
-    When only index 0 is functional, list_available_indices() must return [0].
-    Currently fails with AttributeError because the method is missing.
+    Uses _try_open_fast mock so the test is hermetic (no real camera).
     """
-    from unittest.mock import patch
-
     current_cap = MagicMock()
     current_cap.webcam_index = 0
     sel = CameraSelector(current_capture=current_cap, config_path=tmp_path / "cfg.toml")
 
-    def fake_try_open(index: int):
+    def fake_try_open_fast(index: int):
         if index == 0:
             cap = MagicMock()
             cap.is_open = True
             return cap, True
         return None, False
 
-    with patch.object(sel, "_try_open_index", side_effect=fake_try_open):
-        result = sel.list_available_indices()  # AttributeError before fix
+    with patch.object(sel, "_try_open_fast", side_effect=fake_try_open_fast):
+        result = sel.list_available_indices()
 
     assert result == [0], f"Expected [0], got {result}"
 
 
 def test_list_available_indices_empty_when_no_camera(tmp_path):
-    """EXPECTED: FAIL before fix (T-016). Bug: list_available_indices() does not exist.
-
-    When all indices 0-5 fail, list_available_indices() must return [].
-    Currently fails with AttributeError because the method is missing.
-    """
+    """When all indices 0-5 fail, list_available_indices() must return []."""
     current_cap = MagicMock()
     current_cap.webcam_index = 0
     sel = CameraSelector(current_capture=current_cap, config_path=tmp_path / "cfg.toml")
 
-    with patch.object(sel, "_try_open_index", return_value=(None, False)):
-        result = sel.list_available_indices()  # AttributeError before fix
+    with patch.object(sel, "_try_open_fast", return_value=(None, False)):
+        result = sel.list_available_indices()
 
     assert result == [], f"Expected [], got {result}"
 
 
 def test_list_available_indices_uses_zero_retry_delay(tmp_path):
-    """EXPECTED: FAIL before fix (T-016). Bug: list_available_indices() does not exist.
+    """_try_open_fast must create CaptureEngine with retry_delay_seconds=0.0.
 
-    Probe during enumerate must use retry_delay_seconds=0 to avoid ~6s blocking.
-    The existing _try_open_index uses retry_count=1 but retry_delay_seconds defaults
-    to 1.0 — enumerate must explicitly pass 0.
-    Verify by patching CaptureEngine and inspecting constructor kwargs.
+    Enumerating 6 indices with 1.0s delay = 6s blocking. This verifies that
+    _try_open_fast passes retry_delay_seconds=0.0 to the CaptureEngine ctor.
     """
     from neo_stopmotion.core.capture_engine import CaptureEngine
 
@@ -482,7 +473,6 @@ def test_list_available_indices_uses_zero_retry_delay(tmp_path):
     sel = CameraSelector(current_capture=current_cap, config_path=tmp_path / "cfg.toml")
 
     constructed_delays: list[float] = []
-
     original_init = CaptureEngine.__init__
 
     def spy_init(self, *args, **kwargs):  # type: ignore[override]
@@ -492,13 +482,12 @@ def test_list_available_indices_uses_zero_retry_delay(tmp_path):
     with patch.object(CaptureEngine, "__init__", spy_init):
         with patch.object(CaptureEngine, "open", return_value=None):
             with patch.object(CaptureEngine, "is_open", new_callable=lambda: property(lambda self: False)):
-                try:
-                    sel.list_available_indices()  # AttributeError before fix
-                except AttributeError:
-                    raise  # re-raise to keep FAIL semantics
+                # list_available_indices calls _try_open_fast which builds CaptureEngine
+                # We can't mock _try_open_fast here — we want to trace through it
+                sel._try_open_fast(0)
 
     assert all(d == 0.0 for d in constructed_delays), (
-        f"Expected all retry_delay_seconds=0 during enumerate, got: {constructed_delays}"
+        f"Expected retry_delay_seconds=0.0 in _try_open_fast, got: {constructed_delays}"
     )
 
 

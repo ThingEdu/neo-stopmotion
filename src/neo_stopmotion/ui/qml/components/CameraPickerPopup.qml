@@ -22,10 +22,14 @@ Popup {
     property int initialIndex: 0
     property int currentIndex: 0
 
+    // Dynamic model from enumerate scan (replaces hardcoded 6-slot carousel)
+    // Each element is a real camera index (e.g. [0] or [0,1])
+    property var availableIndices: []
+
     // Internal state
     property bool isAvailable: false
     property bool isLoading: false
-    property bool noCamera: false  // all 0-5 fail
+    property bool noCamera: false  // true when availableIndices is empty
 
     // Picker preview refresh counter — we derive our own local counter from
     // appController.pickerCounter (changes when probe succeeds) combined with
@@ -68,14 +72,36 @@ Popup {
     // Actions (called from QML)
     // -----------------------------------------------------------------
     function openPicker(webcamIndex) {
-        currentIndex = webcamIndex
         initialIndex = webcamIndex
         isAvailable = false
         isLoading = true
         noCamera = false
+        availableIndices = []
         _liveOffset = 0
         open()
-        _probeIndex(currentIndex)
+        // Enumerate real cameras first; then probe the first available
+        _scanAndProbe()
+    }
+
+    function _scanAndProbe() {
+        isLoading = true
+        isAvailable = false
+        var indices = appController.get_available_camera_indices()
+        availableIndices = indices
+        if (indices.length === 0) {
+            isLoading = false
+            noCamera = true
+        } else {
+            noCamera = false
+            // Start at the initially-selected index if it is in the list,
+            // otherwise fall back to the first available.
+            var startReal = indices[0]
+            for (var i = 0; i < indices.length; i++) {
+                if (indices[i] === initialIndex) { startReal = indices[i]; break }
+            }
+            currentIndex = startReal
+            _probeIndex(currentIndex)
+        }
     }
 
     function _probeIndex(idx) {
@@ -86,15 +112,30 @@ Popup {
     }
 
     function _goNext() {
-        var next = (currentIndex + 1) % 6
+        if (availableIndices.length === 0) return
+        var pos = availableIndices.indexOf(currentIndex)
+        var nextPos = (pos + 1) % availableIndices.length
+        var next = availableIndices[nextPos]
         currentIndex = next
         _probeIndex(next)
     }
 
     function _goPrev() {
-        var prev = (currentIndex - 1 + 6) % 6
+        if (availableIndices.length === 0) return
+        var pos = availableIndices.indexOf(currentIndex)
+        var prevPos = (pos - 1 + availableIndices.length) % availableIndices.length
+        var prev = availableIndices[prevPos]
         currentIndex = prev
         _probeIndex(prev)
+    }
+
+    function _rescan() {
+        hotplugTimer.stop()
+        isLoading = true
+        isAvailable = false
+        noCamera = false
+        availableIndices = []
+        _scanAndProbe()
     }
 
     function _confirm() {
@@ -121,6 +162,28 @@ Popup {
         repeat: true
         running: root.opened && root.isAvailable && !root.isLoading
         onTriggered: root._liveOffset++
+    }
+
+    // -----------------------------------------------------------------
+    // Hot-plug re-scan Timer — only active when popup is open AND no camera
+    // found. Stops immediately when a camera is detected.
+    // CONSTRAINT: MUST NOT run when popup is closed or cameras are present.
+    // -----------------------------------------------------------------
+    Timer {
+        id: hotplugTimer
+        interval: 2000
+        repeat: true
+        running: root.opened && root.noCamera
+        onTriggered: {
+            var indices = appController.get_available_camera_indices()
+            if (indices.length > 0) {
+                hotplugTimer.stop()
+                root.availableIndices = indices
+                root.noCamera = false
+                root.currentIndex = indices[0]
+                root._probeIndex(indices[0])
+            }
+        }
     }
 
     // -----------------------------------------------------------------
@@ -186,12 +249,15 @@ Popup {
             }
         }
         Keys.onPressed: function(event) {
-            // 1–6: jump directly to camera index
-            if (event.key >= Qt.Key_1 && event.key <= Qt.Key_6) {
-                var idx = event.key - Qt.Key_1  // 0-based
-                root.currentIndex = idx
-                root._probeIndex(idx)
-                event.accepted = true
+            // 1–M: jump directly to camera by position in availableIndices list
+            if (event.key >= Qt.Key_1 && event.key <= Qt.Key_9) {
+                var pos = event.key - Qt.Key_1  // 0-based position
+                if (pos < root.availableIndices.length) {
+                    var idx = root.availableIndices[pos]
+                    root.currentIndex = idx
+                    root._probeIndex(idx)
+                    event.accepted = true
+                }
             }
         }
 
@@ -219,7 +285,7 @@ Popup {
                         }
                     }
                     Text {
-                        text: "Chọn máy ảnh"
+                        text: "Chọn camera"
                         font.pixelSize: N.NeoConstants.fontBody
                         font.bold: true
                         color: N.NeoConstants.textPrimary
@@ -355,18 +421,41 @@ Popup {
                     }
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Kiểm tra dây USB rồi thử lại nhé!"
+                        text: "Cắm camera USB vào rồi bấm Quét lại nhé!"
                         font.pixelSize: N.NeoConstants.fontCaption
                         color: N.NeoConstants.error
+                    }
+                    Item { height: 8; width: 1 }
+                    Button {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Quét lại"
+                        width: 140
+                        height: 44
+                        font.pixelSize: N.NeoConstants.fontCaption
+                        font.bold: true
+                        onClicked: root._rescan()
+                        background: Rectangle {
+                            radius: 10
+                            color: parent.hovered ? Qt.lighter(N.NeoConstants.secondary, 1.7) : "#E3F0FF"
+                            border.color: N.NeoConstants.secondary
+                            border.width: 2
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            font: parent.font
+                            color: N.NeoConstants.secondary
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
                 }
             }
 
-            // Camera indicator "Máy ảnh N / 6" (mockup 03 style)
+            // Camera indicator "Camera N / M" — dynamic count from real enumerate
             Text {
                 Layout.alignment: Qt.AlignHCenter
                 visible: !root.noCamera
-                text: "Máy ảnh " + (root.currentIndex + 1) + " / 6"
+                text: "Camera " + (root.availableIndices.indexOf(root.currentIndex) + 1) + " / " + root.availableIndices.length
                 font.pixelSize: N.NeoConstants.fontBody
                 font.bold: true
                 color: N.NeoConstants.textPrimary
@@ -413,7 +502,7 @@ Popup {
                             }
                         }
                         Text {
-                            text: "Máy trước"
+                            text: "Camera trước"
                             font.pixelSize: N.NeoConstants.fontCaption
                             font.bold: true
                             color: N.NeoConstants.secondary
@@ -421,16 +510,19 @@ Popup {
                     }
                 }
 
-                // Dot indicators
+                // Dot indicators — one dot per real camera found
                 Row {
                     spacing: 8
                     Repeater {
-                        model: 6
+                        model: root.availableIndices.length
                         delegate: Rectangle {
-                            width: index === root.currentIndex ? 30 : 12
+                            // index = position in list; check if this position's real camera
+                            // index matches currentIndex
+                            property bool isActive: root.availableIndices[index] === root.currentIndex
+                            width: isActive ? 30 : 12
                             height: 12
-                            radius: index === root.currentIndex ? 6 : 6
-                            color: index === root.currentIndex ? N.NeoConstants.secondary : "#dddddd"
+                            radius: 6
+                            color: isActive ? N.NeoConstants.secondary : "#dddddd"
                             Behavior on width { NumberAnimation { duration: 150 } }
                         }
                     }
@@ -454,7 +546,7 @@ Popup {
                         spacing: 8
                         anchors.centerIn: parent
                         Text {
-                            text: "Máy tiếp"
+                            text: "Camera sau"
                             font.pixelSize: N.NeoConstants.fontCaption
                             font.bold: true
                             color: N.NeoConstants.secondary
@@ -527,7 +619,7 @@ Popup {
                     spacing: 12
 
                     Text {
-                        text: "✓ DÙNG MÁY ẢNH NÀY"
+                        text: "✓ DÙNG CAMERA NÀY"
                         font.pixelSize: N.NeoConstants.fontButton
                         font.bold: true
                         color: "#FFFFFF"
@@ -560,8 +652,8 @@ Popup {
 
                 Repeater {
                     model: [
-                        { keys: "◀  ▶", desc: "đổi máy" },
-                        { keys: "1–6",  desc: "chọn nhanh" },
+                        { keys: "◀  ▶", desc: "đổi camera" },
+                        { keys: "1–9",  desc: "chọn nhanh" },
                         { keys: "Enter",desc: "xác nhận" },
                         { keys: "Esc",  desc: "huỷ" }
                     ]
