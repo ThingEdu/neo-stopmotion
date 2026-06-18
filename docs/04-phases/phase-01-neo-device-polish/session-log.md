@@ -30,11 +30,17 @@ timer chỉ chạy khi popup MỞ VÀ no-camera state.
 | T-016 | Fix enumerate + hot-plug + wording | python-dev | ⚪ TODO |
 | T-017 | Architect gate wave-5 | architect | ⚪ TODO |
 
+### Đã hoàn thành trong phiên này
+- **T-015** (QA reproduce-first): 5 test FAIL đúng lý do. Commit `65aeb8f`.
+- **T-016** (python-dev implement): list_available_indices() + _try_open_fast(retry_delay=0)
+  + get_available_camera_indices slot + QML dynamic model + hotplugTimer guard + wording.
+  24/24 test PASS. Commit `590a8d8`.
+- **T-017** (Architect gate): PASS. 125 test, 4-layer clean, Timer guard `running: root.opened && root.noCamera`, không còn text "Máy ảnh", không có hardcode.
+
 ### Next actions
-1. Fire QA → T-015 (reproduce tests FAIL)
-2. Sau T-015 commit → Fire python-dev → T-016 (implement, test FAIL→PASS)
-3. Sau T-016 DONE → Fire Architect → T-017 gate
-4. PASS → `ship-to-main.sh` → PO tạo PR
+1. **PO test** theo `wave-5/test-guide.md` (4 bài test, bắt đầu từ bài 1 + 4 dễ nhất)
+2. Sau PO confirm → `ship-to-main.sh` → PO tạo PR lên main
+3. Tiếp tục: T-013/T-014 QA + Architect gate cho wave-4 (T-009..T-012)
 
 ---
 

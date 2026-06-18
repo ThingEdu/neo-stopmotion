@@ -6,11 +6,11 @@
 | Metric | Count |
 |--------|-------|
 | Tổng task | 17 |
-| ⚪ TODO | 9 |
+| ⚪ TODO | 7 |
 | 🔵 IN_PROGRESS | 0 |
 | 🔴 BLOCKED | 0 |
 | 🟣 REVIEW | 5 |
-| 🟢 DONE | 2 |
+| 🟢 DONE | 4 |
 | ⏭️ SUPERSEDED | 1 (T-008 → gộp vào T-010) |
 
 ---
@@ -67,9 +67,9 @@
 
 | ID | Task | Owner | Status | Scope | Deps | Notes |
 |----|------|-------|--------|-------|------|-------|
-| T-015 | QA reproduce-first: camera enumerate bug + wording | qa | ⚪ TODO | app | - | 5 test FAIL đúng lý do trước khi fix |
-| T-016 | Fix enumerate thật + hot-plug guard + đổi chữ Camera | python-dev | ⚪ TODO | app | T-015 | list_available_indices() + slot + QML dynamic model + Timer guard + wording |
-| T-017 | Architect gate PASS/FAIL wave-5 | architect | ⚪ TODO | app | T-015,T-016 | Gate trước ship-to-main |
+| T-015 | QA reproduce-first: camera enumerate bug + wording | qa | 🟢 DONE | app | - | 5 test FAIL đúng lý do. Commit 65aeb8f |
+| T-016 | Fix enumerate thật + hot-plug guard + đổi chữ Camera | python-dev | 🟢 DONE | app | T-015 | 24 test PASS (FAIL→PASS). Commit 590a8d8. ARCHITECT PASS |
+| T-017 | Architect gate PASS/FAIL wave-5 | architect | 🟢 DONE | app | T-015,T-016 | ARCHITECT PASS. 125 test, 4-layer OK, Timer guard OK, wording sạch |
 
 ---
 
