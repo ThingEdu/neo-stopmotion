@@ -413,3 +413,155 @@ def test_cancel_selection_with_no_webcam_index_does_not_crash():
     """Cancelling the picker with a synthetic engine must not raise."""
     sel = CameraSelector(current_capture=_NoIndexEngine())  # type: ignore[arg-type]
     sel.cancel_selection()  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# T-015 REPRODUCE-FIRST — Wave 5 (2026-06-19)
+# Bug: CameraPickerPopup hardcodes 6 slots regardless of real cameras present.
+# Root cause: CameraSelector has no list_available_indices(); AppController has
+# no get_available_camera_indices() slot; QML uses model:6 / % 6 hardcoded.
+#
+# ALL tests below MUST FAIL before T-016 fix is applied.
+# After T-016 fix they MUST PASS.
+# ---------------------------------------------------------------------------
+
+
+def test_list_available_indices_returns_only_working_cameras(tmp_path):
+    """EXPECTED: FAIL before fix (T-016). Bug: list_available_indices() does not exist.
+
+    When only index 0 is functional, list_available_indices() must return [0].
+    Currently fails with AttributeError because the method is missing.
+    """
+    from unittest.mock import patch
+
+    current_cap = MagicMock()
+    current_cap.webcam_index = 0
+    sel = CameraSelector(current_capture=current_cap, config_path=tmp_path / "cfg.toml")
+
+    def fake_try_open(index: int):
+        if index == 0:
+            cap = MagicMock()
+            cap.is_open = True
+            return cap, True
+        return None, False
+
+    with patch.object(sel, "_try_open_index", side_effect=fake_try_open):
+        result = sel.list_available_indices()  # AttributeError before fix
+
+    assert result == [0], f"Expected [0], got {result}"
+
+
+def test_list_available_indices_empty_when_no_camera(tmp_path):
+    """EXPECTED: FAIL before fix (T-016). Bug: list_available_indices() does not exist.
+
+    When all indices 0-5 fail, list_available_indices() must return [].
+    Currently fails with AttributeError because the method is missing.
+    """
+    current_cap = MagicMock()
+    current_cap.webcam_index = 0
+    sel = CameraSelector(current_capture=current_cap, config_path=tmp_path / "cfg.toml")
+
+    with patch.object(sel, "_try_open_index", return_value=(None, False)):
+        result = sel.list_available_indices()  # AttributeError before fix
+
+    assert result == [], f"Expected [], got {result}"
+
+
+def test_list_available_indices_uses_zero_retry_delay(tmp_path):
+    """EXPECTED: FAIL before fix (T-016). Bug: list_available_indices() does not exist.
+
+    Probe during enumerate must use retry_delay_seconds=0 to avoid ~6s blocking.
+    The existing _try_open_index uses retry_count=1 but retry_delay_seconds defaults
+    to 1.0 — enumerate must explicitly pass 0.
+    Verify by patching CaptureEngine and inspecting constructor kwargs.
+    """
+    from neo_stopmotion.core.capture_engine import CaptureEngine
+
+    current_cap = MagicMock()
+    current_cap.webcam_index = 0
+    sel = CameraSelector(current_capture=current_cap, config_path=tmp_path / "cfg.toml")
+
+    constructed_delays: list[float] = []
+
+    original_init = CaptureEngine.__init__
+
+    def spy_init(self, *args, **kwargs):  # type: ignore[override]
+        constructed_delays.append(kwargs.get("retry_delay_seconds", 1.0))
+        original_init(self, *args, **kwargs)
+
+    with patch.object(CaptureEngine, "__init__", spy_init):
+        with patch.object(CaptureEngine, "open", return_value=None):
+            with patch.object(CaptureEngine, "is_open", new_callable=lambda: property(lambda self: False)):
+                try:
+                    sel.list_available_indices()  # AttributeError before fix
+                except AttributeError:
+                    raise  # re-raise to keep FAIL semantics
+
+    assert all(d == 0.0 for d in constructed_delays), (
+        f"Expected all retry_delay_seconds=0 during enumerate, got: {constructed_delays}"
+    )
+
+
+def test_appcontroller_slot_returns_available_indices():
+    """EXPECTED: FAIL before fix (T-016). Bug: get_available_camera_indices() slot missing.
+
+    AppController must expose a pyqtSlot get_available_camera_indices() that
+    returns a list of int (available camera indices) for QML to use as model.
+    Currently fails with AttributeError because the slot does not exist.
+    """
+    from neo_stopmotion.services.app_controller import AppController
+    from neo_stopmotion.services.export_service import ExportService
+
+    mock_capture = MagicMock()
+    mock_capture.webcam_index = 0
+    mock_session = MagicMock()
+    mock_session.frame_manager.frame_count = 0
+
+    mock_sel = MagicMock(spec=CameraSelector)
+    mock_sel.list_available_indices.return_value = [0]
+
+    ctrl = AppController(
+        capture=mock_capture,
+        session=mock_session,
+        export_service=MagicMock(spec=ExportService),
+        camera_selector=mock_sel,
+    )
+
+    result = ctrl.get_available_camera_indices()  # AttributeError before fix
+    assert isinstance(result, list), f"Expected list, got {type(result)}"
+    assert all(isinstance(i, int) for i in result), f"All elements must be int: {result}"
+
+
+def test_hotplug_guard_qml_has_no_camera_condition_in_timer():
+    """EXPECTED: FAIL before fix (T-016). Bug: QML Timer runs unconditionally when popup open.
+
+    The hot-plug re-scan Timer in CameraPickerPopup.qml must have its 'running'
+    property bound to both root.opened AND root.noCamera — so it never runs when
+    the popup is open and cameras are already found (preventing USB bus hammering).
+
+    This test reads the QML file and asserts the Timer binding includes 'noCamera'.
+    Currently FAILS because the Timer only checks root.opened (or doesn't exist yet).
+    """
+    import re
+
+    qml_path = (
+        Path(__file__).parent.parent.parent
+        / "src/neo_stopmotion/ui/qml/components/CameraPickerPopup.qml"
+    )
+    assert qml_path.exists(), f"QML file not found: {qml_path}"
+
+    content = qml_path.read_text(encoding="utf-8")
+
+    # Look for a Timer with running: bound to noCamera condition
+    # After fix: Timer { interval: 2000; running: root.opened && root.noCamera; ... }
+    hotplug_timer_pattern = re.compile(
+        r"Timer\b[^}]*?running\s*:\s*[^\n]*noCamera[^\n]*",
+        re.DOTALL,
+    )
+    match = hotplug_timer_pattern.search(content)
+
+    assert match is not None, (
+        "Hot-plug Timer in CameraPickerPopup.qml must have 'running' bound to a condition "
+        "that includes 'noCamera' to prevent background scanning when cameras are present. "
+        "Found no such Timer — T-016 fix required."
+    )
