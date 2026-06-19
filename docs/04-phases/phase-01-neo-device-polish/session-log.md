@@ -4,6 +4,56 @@
 
 ---
 
+## Session 2026-06-19 (END) — State of the Union
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-5.
+
+### Làm được trong phiên
+
+**A. Deploy bản mới lên NEO One thật (ngoài wave, PO thực hiện trực tiếp)**
+- NEO One đổi IP: `.12` → `.11` (DHCP); máy đã flash lại OS → SSH key cũ bị xoá, cài lại key bằng password `neo@1234`.
+- Máy trắng hoàn toàn: cài system deps (PyQt6 6.4.2, OpenCV 4.6, ffmpeg 5.1) + runtime deps + bản dev mới nhất từ source local (KHÔNG dùng PyPI — PyPI chỉ có 1.0.1 cũ, trước toàn bộ phase-01).
+- Tạo desktop icon cho user `neo`; xác nhận qua screenshot icon hiện trên desktop + smoke test PASS.
+- Sau wave-5 hoàn thành: đẩy bản mới (có fix camera) lên NEO, xác nhận code mới đã vào.
+
+**B. Wave-5 hoàn thành: T-015/T-016/T-017 — tất cả DONE + ARCHITECT PASS**
+- T-015 (QA reproduce-first): 5 test FAIL đúng lý do. Commit `65aeb8f`.
+- T-016 (python-dev): `list_available_indices()` + `_try_open_fast(retry_delay=0)` + QML dynamic model + hotplugTimer guard + wording "Camera". 24/24 test PASS. Commit `590a8d8`.
+- T-017 (Architect): PASS — 125 test, 4-layer clean, timer guard `running: root.opened && root.noCamera`, không còn hardcode, không còn "Máy ảnh".
+
+**C. Bug mới phát hiện → tạo T-018 (không để rơi qua khe)**
+- `scripts/install_on_neo.sh` hardcode `$HOME/Desktop`. NEO chạy locale tiếng Việt → thư mục thật là `$HOME/Màn hình nền` (XDG_DESKTOP_DIR). Hệ quả: icon âm thầm không hiện (đúng triệu chứng ban đầu PO gặp).
+- Fix: dùng `$(xdg-user-dir DESKTOP)` + logic trust XFCE 4.18 (metadata::xfce-exe-checksum).
+- Đã tạo T-018 trong task-board (TODO, scope: app, owner: devops, phiên sau).
+
+### Thay đổi file trong phiên này
+| File | Loại |
+|------|------|
+| `docs/04-phases/phase-01-neo-device-polish/task-board.md` | UPDATED — thêm T-018, tổng 17→18 |
+| `docs/04-phases/phase-01-neo-device-polish/session-log.md` | UPDATED — entry này |
+
+### Trạng thái task tổng hợp
+| Task | Status |
+|------|--------|
+| T-001/002 (wave-1) | 🟣 REVIEW — chờ PO test trên NEO (IP mới .11, bản dev mới) |
+| T-003/004 (wave-2) | 🟢 DONE |
+| T-005/006/007 (wave-3) | 🟣 REVIEW — chờ PO test GUI |
+| T-009/010/011/012 (wave-4) | 🟣 REVIEW — T-013/014 còn TODO |
+| T-013/014 (wave-4 QA+Architect) | ⚪ TODO |
+| T-015/016/017 (wave-5) | 🟢 DONE + ARCHITECT PASS |
+| T-018 (wave-6 bug installer) | ⚪ TODO — phiên sau |
+
+### Next actions (phiên sau)
+1. **PO test wave-5** theo `wave-5/test-guide.md` (4 bài, bắt đầu bài 1+4 dễ nhất) trên NEO mới (.11).
+2. Sau PO confirm wave-5 → `ship-to-main.sh` → PO tạo PR lên main.
+3. **T-013/T-014** (QA + Architect gate wave-4) — làm song song hoặc sau ship wave-5.
+4. **T-018** fix installer desktop path — giao devops, phiên sau.
+
+### Blockers
+- Không có blocker kỹ thuật. NEO One (.11) đang online với bản dev mới nhất.
+
+---
+
 ## Session 2026-06-19 — Wave-5: Fix màn "Chọn camera"
 
 **Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-5.

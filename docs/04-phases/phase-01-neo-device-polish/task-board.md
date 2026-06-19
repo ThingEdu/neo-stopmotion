@@ -1,12 +1,12 @@
 # Task Board — Phase: phase-01-neo-device-polish
 
-> **Cập nhật**: 2026-06-19
+> **Cập nhật**: 2026-06-19 (SESSION END)
 
 ## Tổng quan
 | Metric | Count |
 |--------|-------|
-| Tổng task | 17 |
-| ⚪ TODO | 7 |
+| Tổng task | 18 |
+| ⚪ TODO | 8 |
 | 🔵 IN_PROGRESS | 0 |
 | 🔴 BLOCKED | 0 |
 | 🟣 REVIEW | 5 |
@@ -70,6 +70,15 @@
 | T-015 | QA reproduce-first: camera enumerate bug + wording | qa | 🟢 DONE | app | - | 5 test FAIL đúng lý do. Commit 65aeb8f |
 | T-016 | Fix enumerate thật + hot-plug guard + đổi chữ Camera | python-dev | 🟢 DONE | app | T-015 | 24 test PASS (FAIL→PASS). Commit 590a8d8. ARCHITECT PASS |
 | T-017 | Architect gate PASS/FAIL wave-5 | architect | 🟢 DONE | app | T-015,T-016 | ARCHITECT PASS. 125 test, 4-layer OK, Timer guard OK, wording sạch |
+
+---
+
+## Wave 6: Bug fix installer — desktop launcher localized path (phiên sau)
+> Phát hiện 2026-06-19 trong quá trình deploy NEO thật (IP mới .11, máy flash lại).
+
+| ID | Task | Owner | Status | Scope | Deps | Notes |
+|----|------|-------|--------|-------|------|-------|
+| T-018 | Fix install_on_neo.sh dùng xdg-user-dir DESKTOP thay $HOME/Desktop + XFCE trust logic | devops | ⚪ TODO | app | - | NEO locale tiếng Việt → thư mục thật là "Màn hình nền"; hardcode $HOME/Desktop âm thầm không hiện icon |
 
 ---
 
