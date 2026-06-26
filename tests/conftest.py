@@ -10,9 +10,27 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 
+def _real_pyqt6_available() -> bool:
+    """Return True if the real PyQt6 wheel (with QtTest) is importable."""
+    try:
+        import importlib
+
+        m = importlib.import_module("PyQt6.QtCore")  # noqa: F401
+        return m is not None
+    except ModuleNotFoundError:
+        return False
+
+
 def _make_pyqt6_stubs() -> None:
-    """Provide lightweight stubs for PyQt6 so core tests run without the GUI stack."""
+    """Provide lightweight stubs for PyQt6 so core tests run without the GUI stack.
+
+    Stubs are skipped when the real PyQt6 wheel is available so that pytest-qt
+    can load its QtTest fixture (qtbot) without hitting an AttributeError.
+    """
     if "PyQt6" in sys.modules:
+        return
+    if _real_pyqt6_available():
+        # Real PyQt6 installed — let pytest-qt use it directly; no stub needed.
         return
 
     class _pyqtSignal:  # noqa: N801

@@ -205,10 +205,8 @@ def test_save_twice_to_different_dirs(sample_mp4, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_app_controller_save_video_slot(sample_mp4, dest_dir):
+def test_app_controller_save_video_slot(qtbot, sample_mp4, dest_dir):
     """AppController.save_video(mp4_path, dest_dir) delegates to VideoSaver."""
-    import time
-
     from neo_stopmotion.services.app_controller import AppController
     from neo_stopmotion.utils.signal_bus import SignalBus
 
@@ -223,12 +221,10 @@ def test_app_controller_save_video_slot(sample_mp4, dest_dir):
         capture=mock_capture,
         session=mock_session,
     )
-    ctrl.save_video(str(sample_mp4), str(dest_dir))
 
-    # Wait for background thread to finish (max 2s)
-    deadline = time.monotonic() + 2.0
-    while not results and time.monotonic() < deadline:
-        time.sleep(0.05)
+    # Use qtbot to pump the Qt event loop so cross-thread signals are delivered.
+    with qtbot.waitSignal(bus.save_video_result, timeout=3000):
+        ctrl.save_video(str(sample_mp4), str(dest_dir))
 
     assert len(results) >= 1
     ok, msg = results[0]
