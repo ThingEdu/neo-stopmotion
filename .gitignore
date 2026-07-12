@@ -18,3 +18,10 @@ htmlcov/
 /home/maker/projects/
 *.qmlc
 *.jsc
+
+# Debian packaging build artifacts
+debian/neo-stopmotion/
+debian/.debhelper/
+debian/files
+debian/*.substvars
+debian/debhelper-build-stamp

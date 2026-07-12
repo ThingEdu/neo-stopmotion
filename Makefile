@@ -1,4 +1,4 @@
-.PHONY: install dev test lint format build clean publish publish-test
+.PHONY: install dev test lint format build clean publish publish-test deb
 
 install:
 	pip install -e .
@@ -26,6 +26,9 @@ run-sim:
 
 build:
 	python -m build
+
+deb:
+	bash scripts/build_deb.sh
 
 clean:
 	rm -rf build dist *.egg-info

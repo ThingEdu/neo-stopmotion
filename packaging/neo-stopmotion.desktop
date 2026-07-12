@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=NEO Stopmotion
+GenericName=Stop-motion Studio
+Comment=Stop-motion studio for NEO One and ThingBot
+Exec=neo-stopmotion
+Icon=neo-stopmotion
+Terminal=false
+Categories=Education;Graphics;Video;
+Keywords=stop-motion;animation;education;maker;thingbot;
+StartupNotify=true

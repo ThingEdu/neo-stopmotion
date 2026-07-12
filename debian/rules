@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+export PYBUILD_NAME = neo_stopmotion
+export PYBUILD_DESTDIR = debian/neo-stopmotion
+# Tests need PyQt6/webcam mocks from requirements-dev.txt; run via `make test`, not here.
+export PYBUILD_DISABLE = test
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+execute_after_dh_install:
+	install -Dm644 src/neo_stopmotion/resources/images/maker_viet_logo.png \
+		debian/neo-stopmotion/usr/share/pixmaps/neo-stopmotion.png

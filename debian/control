@@ -1,0 +1,50 @@
+Source: neo-stopmotion
+Section: education
+Priority: optional
+Maintainer: Maker Việt <everwellmax@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+ dh-python,
+ python3-all,
+ python3-setuptools,
+ pybuild-plugin-pyproject
+Standards-Version: 4.6.2
+Homepage: https://github.com/ThingEdu/neo-stopmotion
+Rules-Requires-Root: no
+
+Package: neo-stopmotion
+Architecture: all
+Depends: ${misc:Depends},
+ ${python3:Depends},
+ python3-pyqt6,
+ python3-pyqt6.qtquick,
+ python3-pyqt6.qtqml,
+ python3-opencv,
+ python3-numpy,
+ python3-serial,
+ python3-qrcode,
+ python3-pil,
+ python3-requests,
+ python3-loguru,
+ ffmpeg,
+ qt6-qpa-plugins,
+ qml6-module-qtquick,
+ qml6-module-qtquick-controls,
+ qml6-module-qtquick-layouts,
+ qml6-module-qtquick-window,
+ qml6-module-qtquick-templates,
+ qml6-module-qtqml-workerscript,
+ qml6-module-qtmultimedia,
+ gstreamer1.0-plugins-base,
+ gstreamer1.0-plugins-good,
+ gstreamer1.0-libav
+Recommends: v4l-utils,
+ qt6-wayland
+Description: Stop-motion animation studio for kids (NEO One / ThingBot)
+ NeoStopMotion is an open-source stop-motion animation studio designed
+ for children aged 6-14, built for the NEO One education device
+ (ARM64/Armbian) and standard Linux desktops.
+ .
+ Kids capture animation frames one by one using the ThingBot controller
+ (two arcade buttons over UART) or the keyboard, then the app assembles
+ an MP4 + GIF via ffmpeg, uploads to the cloud, and shows a QR code so
+ parents can download the film.

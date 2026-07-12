@@ -1,0 +1,8 @@
+neo-stopmotion (1.0.1) unstable; urgency=medium
+
+  * Initial Debian packaging.
+  * Architecture-independent package; PyQt6, OpenCV, numpy, ffmpeg and
+    the Qt6 QML runtime are pulled from apt (never built via pip),
+    matching the ARM install strategy of scripts/install_on_neo.sh.
+
+ -- Maker Việt <everwellmax@gmail.com>  Sun, 12 Jul 2026 12:00:00 +0700
