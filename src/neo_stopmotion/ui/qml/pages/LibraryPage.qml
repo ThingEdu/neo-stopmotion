@@ -461,11 +461,37 @@ Item {
                         clip: true
                         border.color: "white"; border.width: 4
 
+                        // Same rest-then-replay loop as SuccessPage: MediaPlayer.Infinite
+                        // wedges after a few loops on NEO One's GStreamer backend.
                         MediaPlayer {
                             id: videoPlayer
                             videoOutput: videoOutput
                             audioOutput: AudioOutput { volume: 0 }
-                            loops: MediaPlayer.Infinite
+
+                            onMediaStatusChanged: {
+                                if (mediaStatus === MediaPlayer.EndOfMedia && root.isPlaying) {
+                                    // Pause at frame 0 instead of stopping — a stopped
+                                    // pipeline clears the sink and blacks out the rest.
+                                    position = 0
+                                    pause()
+                                    libraryReplayTimer.restart()
+                                }
+                            }
+                            onErrorOccurred: function(error, errorString) {
+                                console.warn("LibraryPage MediaPlayer error:", error, errorString)
+                            }
+                        }
+
+                        Timer {
+                            id: libraryReplayTimer
+                            interval: 5000
+                            repeat: false
+                            onTriggered: {
+                                if (!root.isPlaying || videoPlayer.source === "")
+                                    return
+                                videoPlayer.position = 0
+                                videoPlayer.play()
+                            }
                         }
                         VideoOutput {
                             id: videoOutput
@@ -1059,6 +1085,7 @@ Item {
     }
 
     function _stopPlayer() {
+        libraryReplayTimer.stop()
         videoPlayer.stop()
         videoPlayer.source = ""   // fully release pipeline before any destroy
         isPlaying = false
@@ -1066,6 +1093,7 @@ Item {
 
     function _togglePlay() {
         if (isPlaying) {
+            libraryReplayTimer.stop()
             videoPlayer.pause()
             isPlaying = false
         } else {

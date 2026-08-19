@@ -180,8 +180,20 @@ install_system_deps() {
             qml6-module-qtqml-workerscript \
             qml6-module-qtmultimedia \
             gstreamer1.0-libav \
-            gstreamer1.0-plugins-bad \
+            libgstreamer-plugins-bad1.0-0 \
             2>/dev/null || true
+        # Video playback on SuccessPage needs both of the above:
+        #   gstreamer1.0-libav          -> avdec_h264, the only H.264 decoder
+        #                                  present on a stock NEO One image.
+        #   libgstreamer-plugins-bad1.0-0 -> libgstphotography-1.0.so.0, which
+        #                                  Qt's libgstreamermediaplugin.so links
+        #                                  against; without it Qt loads no media
+        #                                  backend at all ("No QtMultimedia
+        #                                  backends found") and video stays black.
+        # Deliberately the -0 library, not the full gstreamer1.0-plugins-bad
+        # plugin set: that one adds the Allwinner v4l2slh264dec decoder, which
+        # outranks avdec_h264 and then fails buffer allocation. Verified on
+        # device 2026-08-19. See src/neo_stopmotion/media_env.py.
     elif [ "$ARCH" = "x86" ]; then
         info "x86 detected - PyQt6 and OpenCV will be installed via pip."
         if command -v apt-get &>/dev/null; then

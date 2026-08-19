@@ -4,6 +4,49 @@
 
 ---
 
+## Session 2026-08-19 — T-019: phim không play trên NEO One + loop nghỉ 5s
+
+**Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-5.
+**Thiết bị test:** NEO One `192.168.1.28` (Armbian bookworm, aarch64, XFCE, DISPLAY=:0).
+
+### T-001 chưa đóng được vấn đề — root cause nằm sâu hơn một tầng
+T-001 kết luận "thiếu `gstreamer1.0-libav`". Đúng, nhưng máy vẫn đen hình sau khi cài,
+vì **app chạy trong venv `/home/neo/Applications/neo-stopmotion/venv`** với PyQt6 6.7.1 /
+Qt **6.7.3 từ wheel PyPI** (`include-system-site-packages = false`) — không dùng Qt 6.4.2
+của hệ thống. Mọi verify trước đây chạy bằng `python3` hệ thống nên **test nhầm stack**.
+
+Qt 6.7 mặc định backend **ffmpeg**; `libffmpegmediaplugin.so` trong wheel link
+`libav*.so.58` (ffmpeg 4.x) còn Debian 12 có `libavcodec.so.59` ⇒ plugin nạp lỗi và Qt
+**bỏ cuộc, không thử tiếp plugin gstreamer** → `No QtMultimedia backends found`.
+
+### Đã làm
+| File | Thay đổi |
+|------|---------|
+| `src/neo_stopmotion/media_env.py` | MỚI — `configure_media_backend()`: ép `QT_MEDIA_BACKEND=gstreamer` + giữ guard hạ rank `v4l2slh264dec` (Linux, no-op macOS) |
+| `src/neo_stopmotion/__main__.py` | Gọi guard trước khi import Qt |
+| `tests/unit/test_media_env.py` | MỚI — 4 test (TDD, viết trước, đỏ → xanh) |
+| `ui/qml/pages/SuccessPage.qml` | Bỏ `loops: Infinite`; EndOfMedia → `position=0` + `pause()` → Timer 5s → `play()`; Space set `userPaused`; badge 3 trạng thái; log `onErrorOccurred` |
+| `ui/qml/pages/LibraryPage.qml` | Cùng cơ chế loop nghỉ 5s |
+| `scripts/install_on_neo.sh` | `gstreamer1.0-plugins-bad` → `libgstreamer-plugins-bad1.0-0` (thư viện thôi, tránh kéo `v4l2slh264dec`) + comment lý do |
+
+### Bằng chứng (máy thật, không set env tay)
+- Trước: `frames_received = 0`, `Error.ResourceError Not available`.
+- Sau: `frames_received = 32 | valid = 31`, `Error.NoError`; log app 0 dòng lỗi backend.
+- Nhịp lặp 22s: phim 1.6s, khoảng cách giữa các lần phát `7.89 / 6.88 / 6.88` s.
+- Ảnh chụp SuccessPage: lúc nghỉ hiện khung đầu phim (tick=76), lúc phát hiện tick=160.
+- `make test` 131 PASS; ruff + mypy sạch trên file mới.
+
+### Lưu ý triển khai
+- Máy đang chạy **bản vá tay** trên venv (bản gốc backup `*.bak` cùng thư mục), vì
+  `SuccessPage.qml` nhánh này đã redesign, không tương thích bản 1.0.1 cài từ PyPI.
+- `debian/control` chỉ có trên `main` → khi ship nhớ thêm `libgstreamer-plugins-bad1.0-0`.
+
+### Việc kế tiếp
+1. PO test tay: làm phim → xem loop, bấm Space dừng/phát.
+2. `ship-to-main.sh` đưa code lên main (kèm sửa `debian/control`).
+
+---
+
 ## Session 2026-06-19 (END) — State of the Union
 
 **Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-5.

@@ -16,6 +16,15 @@ Item {
     // Signal for T-012 (library navigation) — T-012 sẽ connect
     signal navigateToLibrary()
 
+    // True while the child paused playback with Space — suppresses the auto-replay
+    // so a deliberate pause isn't undone 5 seconds later.
+    property bool userPaused: false
+
+    function _scheduleReplay() {
+        if (mp4Path !== "" && !userPaused)
+            replayTimer.restart()
+    }
+
     // ---------------------------------------------------------------------------
     // Background (mockup 06 radial gradient)
     // ---------------------------------------------------------------------------
@@ -84,14 +93,53 @@ Item {
                 border.width: 5
                 clip: true
 
+                // Loop with a breather: play once, rest 5s, play again.
+                // Deliberately NOT MediaPlayer.Infinite — on NEO One's GStreamer
+                // backend that loops a few times and then wedges in StoppedState,
+                // leaving the film frozen on its last frame. Restarting the player
+                // ourselves is both what kids need (a pause to look at the film)
+                // and immune to that backend bug.
                 MediaPlayer {
                     id: player
                     source: root.mp4Path !== "" ? "file://" + root.mp4Path : ""
                     videoOutput: vo
                     audioOutput: AudioOutput { volume: 0 }
-                    loops: MediaPlayer.Infinite
                     onSourceChanged: if (root.mp4Path !== "") play()
                     Component.onCompleted: if (root.mp4Path !== "") play()
+
+                    onMediaStatusChanged: {
+                        if (mediaStatus === MediaPlayer.EndOfMedia) {
+                            // Rewind and pause rather than stop: a stopped pipeline
+                            // clears the video sink and the film goes black for the
+                            // whole rest. Pausing at position 0 leaves the film's
+                            // first frame on screen, so it reads as "about to start".
+                            position = 0
+                            pause()
+                            root._scheduleReplay()
+                        }
+                    }
+                    // Backend fallback: it can stop without ever emitting EndOfMedia.
+                    onPlaybackStateChanged: {
+                        if (playbackState === MediaPlayer.StoppedState && !root.userPaused)
+                            root._scheduleReplay()
+                    }
+                    onErrorOccurred: function(error, errorString) {
+                        console.warn("MediaPlayer error:", error, errorString, "source:", source)
+                    }
+                }
+
+                // Rest between loops. Restarting from position 0 (not just play())
+                // because a stopped GStreamer pipeline keeps its end position.
+                Timer {
+                    id: replayTimer
+                    interval: 5000
+                    repeat: false
+                    onTriggered: {
+                        if (root.mp4Path === "" || root.userPaused)
+                            return
+                        player.position = 0
+                        player.play()
+                    }
                 }
                 VideoOutput {
                     id: vo
@@ -111,7 +159,11 @@ Item {
                     Text {
                         id: loopLabel
                         anchors.centerIn: parent
-                        text: "🔁 Đang phát"
+                        text: root.userPaused
+                              ? "⏸️ Đang dừng"
+                              : (player.playbackState === MediaPlayer.PlayingState
+                                 ? "🔁 Đang phát"
+                                 : "😴 Nghỉ 5 giây rồi phát lại")
                         font.pixelSize: 14
                         font.bold: true
                         color: "#FFFFFF"
@@ -498,8 +550,14 @@ Item {
         // Space — play/pause
         if (event.key === Qt.Key_Space) {
             if (player.playbackState === MediaPlayer.PlayingState) {
+                root.userPaused = true
+                replayTimer.stop()
                 player.pause()
             } else {
+                root.userPaused = false
+                replayTimer.stop()
+                if (player.playbackState === MediaPlayer.StoppedState)
+                    player.position = 0
                 player.play()
             }
             event.accepted = true

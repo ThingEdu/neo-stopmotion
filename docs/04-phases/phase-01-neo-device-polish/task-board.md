@@ -70,6 +70,7 @@
 | T-015 | QA reproduce-first: camera enumerate bug + wording | qa | 🟢 DONE | app | - | 5 test FAIL đúng lý do. Commit 65aeb8f |
 | T-016 | Fix enumerate thật + hot-plug guard + đổi chữ Camera | python-dev | 🟢 DONE | app | T-015 | 24 test PASS (FAIL→PASS). Commit 590a8d8. ARCHITECT PASS |
 | T-017 | Architect gate PASS/FAIL wave-5 | architect | 🟢 DONE | app | T-015,T-016 | ARCHITECT PASS. 125 test, 4-layer OK, Timer guard OK, wording sạch |
+| T-019 | Phim không play trên NEO One + loop nghỉ 5s | python-dev | 🟢 DONE | app | T-001 | Root cause thật: Qt 6.7 wheel nạp backend ffmpeg lỗi libav.58 → KHÔNG backend nào. Ép QT_MEDIA_BACKEND=gstreamer + apt libgstreamer-plugins-bad1.0-0. Loop tự điều khiển (Infinite kẹt sau ~8 vòng). Verify trên máy thật 192.168.1.28, 131 test |
 
 ---
 
