@@ -1,3 +1,18 @@
+neo-stopmotion (1.0.2) unstable; urgency=medium
+
+  * Fix video playback on NEO One: force the GStreamer media backend (the
+    PyQt6 wheel's ffmpeg backend links against libav*.so.58 while Debian 12
+    ships ffmpeg 5.x, so Qt loaded no backend at all and the film stayed
+    black), and depend on libgstreamer-plugins-bad1.0-0 which Qt's GStreamer
+    plugin needs for libgstphotography.
+  * SuccessPage now loops the film with a 5 second rest between plays instead
+    of MediaPlayer.Infinite, which wedged after a few loops on this hardware.
+  * EXPORT ends the film exactly once: pressing Enter (or the red ThingBot
+    button) again no longer re-renders a finished film or starts a second
+    ffmpeg pipeline.
+
+ -- Maker Việt <everwellmax@gmail.com>  Wed, 19 Aug 2026 22:00:00 +0700
+
 neo-stopmotion (1.0.1) unstable; urgency=medium
 
   * Initial Debian packaging.
