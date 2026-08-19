@@ -52,28 +52,63 @@ if [ "$(id -u)" -eq 0 ]; then
 fi
 
 # pip uninstall wrapper for cleaning up legacy (pre-.deb) installations.
+# The legacy pip install lives in the DESKTOP USER's home, but this script is
+# usually run through sudo, where $HOME is /root. Resolve the real user once and
+# clean up there — otherwise ~/.local survives and silently shadows the package
+# (both on PATH and, worse, on sys.path: ~/.local/lib/pythonX/site-packages is
+# searched before /usr/lib/python3/dist-packages, so /usr/bin/neo-stopmotion
+# would import the OLD code while looking perfectly installed).
+TARGET_USER="${SUDO_USER:-$(id -un)}"
+TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
+[ -n "$TARGET_HOME" ] || TARGET_HOME="$HOME"
+
+# Run a command as the desktop user (no-op indirection when already that user).
+as_target_user() {
+    if [ "$(id -un)" = "$TARGET_USER" ]; then
+        "$@"
+    else
+        sudo -u "$TARGET_USER" -H "$@"
+    fi
+}
+
 pip_uninstall() {
     local bsp=""
     if python3 -m pip install --help 2>&1 | grep -q "break-system-packages"; then
         bsp="--break-system-packages"
     fi
-    python3 -m pip uninstall -y $bsp "$@" 2>/dev/null || true
+    as_target_user python3 -m pip uninstall -y $bsp "$@" 2>/dev/null || true
 }
 
 # Remove artifacts left by the old pip-based installer, which would otherwise
-# shadow the system package (~/.local/bin comes first in PATH).
+# shadow the system package.
 cleanup_legacy_pip_install() {
     if command -v python3 &>/dev/null \
-        && python3 -m pip show "$PKG" &>/dev/null; then
-        info "Removing legacy pip installation..."
+        && as_target_user python3 -m pip show "$PKG" &>/dev/null; then
+        info "Removing legacy pip installation for user '$TARGET_USER'..."
         pip_uninstall "$PKG"
     fi
-    rm -f "$HOME/.local/bin/neo-stopmotion"
-    if [ -f "$HOME/.local/share/applications/neo-stopmotion.desktop" ]; then
-        rm -f "$HOME/.local/share/applications/neo-stopmotion.desktop"
-        update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+    rm -f "$TARGET_HOME/.local/bin/neo-stopmotion"
+    if [ -f "$TARGET_HOME/.local/share/applications/neo-stopmotion.desktop" ]; then
+        rm -f "$TARGET_HOME/.local/share/applications/neo-stopmotion.desktop"
+        update-desktop-database "$TARGET_HOME/.local/share/applications" 2>/dev/null || true
     fi
-    rm -f "$HOME/.local/share/icons/hicolor/128x128/apps/neo-stopmotion.png"
+    rm -f "$TARGET_HOME/.local/share/icons/hicolor/128x128/apps/neo-stopmotion.png"
+
+    # Older field installs used a private venv under ~/Applications. Its launcher
+    # shadows the package the same way, so drop the launcher and tell the operator
+    # where the venv is instead of deleting a directory we do not own.
+    local venv="$TARGET_HOME/Applications/neo-stopmotion/venv"
+    if [ -d "$venv" ]; then
+        warn "Bản cài venv cũ vẫn còn tại $venv — có thể xoá tay nếu không dùng nữa."
+    fi
+
+    # Whatever remains must not shadow the package.
+    local loaded
+    loaded="$(as_target_user python3 -c 'import neo_stopmotion,sys; print(neo_stopmotion.__file__)' 2>/dev/null || true)"
+    case "$loaded" in
+        /usr/lib/python3/*|"") : ;;
+        *) warn "CẢNH BÁO: python vẫn nạp neo_stopmotion từ $loaded — gói hệ thống đang bị che." ;;
+    esac
 }
 
 # -- Uninstall -----------------------------------------------------------------

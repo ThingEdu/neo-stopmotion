@@ -27,6 +27,16 @@
   song. Nay EXPORT chỉ chạy đúng một lần cho mỗi phim (chặn ở `AppController` nên nút đỏ
   ThingBot cũng được bảo vệ); export lỗi thì vẫn bấm lại được.
 
+### Fixed — sửa sau khi phát hành (installer, không nằm trong .deb)
+
+- **Gói .deb bị bản pip cũ che hoàn toàn** — `install_on_neo.sh` thường chạy qua `sudo`,
+  lúc đó `$HOME` là `/root` nên bước dọn bản pip cũ không đụng tới `/home/<user>/.local`.
+  Hậu quả nặng hơn PATH: `~/.local/lib/pythonX/site-packages` được python tìm **trước**
+  `/usr/lib/python3/dist-packages`, nên `/usr/bin/neo-stopmotion` vẫn nạp code CŨ trong
+  khi `dpkg -s` báo đã cài 1.0.2. Nay installer resolve `SUDO_USER` và dọn đúng home của
+  người dùng desktop, cảnh báo nếu còn bản venv cũ, và kiểm tra lại xem gói hệ thống có
+  còn bị che không.
+
 ### Changed — thay đổi
 
 - **Phát phim có nhịp nghỉ** — phim phát xong nghỉ 5 giây rồi tự phát lại, lặp vô hạn.
