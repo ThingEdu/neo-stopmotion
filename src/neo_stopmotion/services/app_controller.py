@@ -41,6 +41,7 @@ class AppController(QObject):
         self._bus = SignalBus.instance()
         self._frame_count = 0
         self._post_export = False  # True when on SuccessPage
+        self._exporting = False  # True between EXPORT and export_completed/failed
         # T-005: camera selector (lazy init if not provided)
         self._camera_selector: CameraSelector | None = camera_selector
         # T-005: picker preview counter — bumped each time a probe succeeds so QML
@@ -52,9 +53,16 @@ class AppController(QObject):
         self._library_service: LibraryService | None = library_service
         self._bus.uart_command_received.connect(self.handle_uart_command)
         self._bus.export_completed.connect(self._on_export_completed)
+        self._bus.export_failed.connect(self._on_export_failed)
 
     def _on_export_completed(self, _payload: dict) -> None:
         self._post_export = True
+        self._exporting = False
+
+    def _on_export_failed(self, _message: str) -> None:
+        # Let the child try again — a failed export must not lock them out of
+        # ever finishing the film.
+        self._exporting = False
 
     @pyqtProperty(int, notify=frameCountChanged)
     def frameCount(self) -> int:
@@ -111,6 +119,16 @@ class AppController(QObject):
         self._bus.frame_undone.emit(new_count)
 
     def _do_export(self) -> None:
+        # EXPORT ends the film — exactly once. Pressing Enter (or the red ThingBot
+        # button) again while rendering would start a second ffmpeg pipeline over
+        # the same frames; pressing it on SuccessPage would re-render a film that
+        # is already finished. Both read to a child as "it just keeps going".
+        if self._exporting:
+            logger.debug("EXPORT ignored — an export is already running")
+            return
+        if self._post_export:
+            logger.debug("EXPORT ignored — film already finished; SHOOT starts a new one")
+            return
         fm = self._session.frame_manager
         if fm.frame_count < self._min_frames:
             self._bus.status_message.emit(
@@ -124,6 +142,7 @@ class AppController(QObject):
         # T-006: pass selected fps to export service
         fps = self.speed_selector.selected_fps
         logger.info(f"Export started with fps={fps} ({self.speed_selector.selected_label})")
+        self._exporting = True
         self._export_service.start_export(fm, fps=fps)
 
     # ------------------------------------------------------------------
@@ -229,6 +248,7 @@ class AppController(QObject):
         self._capture.reset()
         self._frame_count = 0
         self._post_export = False
+        self._exporting = False
         # T-006: reset speed selector to default (Vua / 8fps) for new session
         self.speed_selector.reset()
         self.frameCountChanged.emit(0)

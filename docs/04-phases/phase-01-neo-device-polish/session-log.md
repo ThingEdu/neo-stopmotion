@@ -4,6 +4,27 @@
 
 ---
 
+## Session 2026-08-19 (b) — T-020: Enter phải kết thúc làm phim
+
+PO báo Enter "làm tiếp như Space". Tái hiện trên NEO One: trên màn hình kết quả,
+Enter gọi EXPORT lần nữa → ghép LẠI chính bộ frame cũ; Space thì auto-reset sang phim
+mới. Bấm Enter 2 lần lúc đang ghép → 2 tiến trình ffmpeg song song.
+
+Root cause: `_do_export()` không có cờ trạng thái nào chặn lặp; `_post_export` chỉ dùng
+cho nhánh SHOOT. Sửa ở **tầng AppController** (cờ `_exporting` + chặn `_post_export`,
+nhả cờ khi `export_failed` để export hỏng vẫn làm lại được) nên nút đỏ ThingBot cứng
+cũng được bảo vệ, không chỉ bàn phím. QML: Enter thôi gán "làm phim mới" trên
+SuccessPage (giữ N + nút), sửa chữ hướng dẫn cho khớp.
+
+5 test mới `tests/unit/test_export_once.py` (viết đỏ trước → xanh), tổng 136 PASS.
+Verify on-device: Enter lần 2 và Enter trên màn kết quả đều bị bỏ qua, Space vẫn mở
+phim mới. Chi tiết + bằng chứng: `wave-5/T-020-enter-ends-film.md`.
+
+**Bài học đo đạc:** vài phép đếm đầu tiên bị nhiễu vì script test cũ của phiên trước
+còn chạy nền và gửi phím vào app. Luôn `pgrep -af` dọn script cũ trước khi đo.
+
+---
+
 ## Session 2026-08-19 — T-019: phim không play trên NEO One + loop nghỉ 5s
 
 **Nhánh:** `feat/neo-device-polish` | **Mode:** FEATURE | Phase 01, wave-5.

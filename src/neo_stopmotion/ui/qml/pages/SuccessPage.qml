@@ -481,7 +481,7 @@ Item {
                 onClicked: root.navigateToLibrary()
             }
 
-            // Làm phim mới — N / Enter
+            // Làm phim mới — N (Enter không gán: Enter = kết thúc làm phim)
             Button {
                 id: newFilmBtn
                 height: 80
@@ -517,7 +517,7 @@ Item {
                         Text {
                             id: newKbd
                             anchors.centerIn: parent
-                            text: "N / Enter"
+                            text: "N"
                             font.pixelSize: 11
                             font.bold: true
                             font.family: "monospace"
@@ -536,7 +536,7 @@ Item {
         Text {
             Layout.alignment: Qt.AlignHCenter
             Layout.bottomMargin: 18
-            text: "Space phát/dừng · S lưu · L chép link · G thư viện · N/Enter làm phim mới"
+            text: "Space phát/dừng · S lưu · L chép link · G thư viện · N làm phim mới"
             font.pixelSize: 13
             font.bold: true
             color: N.NeoConstants.textSecondary
@@ -581,11 +581,14 @@ Item {
             root.navigateToLibrary()
             event.accepted = true
         }
-        // N or Enter — new film
-        else if (event.key === Qt.Key_N ||
-                 event.key === Qt.Key_Return ||
-                 event.key === Qt.Key_Enter) {
+        // N — new film. Enter is deliberately NOT bound here: Enter means
+        // "kết thúc làm phim", and the film is already finished on this page.
+        // Swallow it so it can't fall through to the global EXPORT handler.
+        else if (event.key === Qt.Key_N) {
             appController.reset_session()
+            event.accepted = true
+        }
+        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
             event.accepted = true
         }
     }

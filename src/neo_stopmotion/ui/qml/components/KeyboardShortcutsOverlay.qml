@@ -106,7 +106,7 @@ Popup {
 
                     ShortcutRow { keys: "Space"; description: "Chụp ảnh"; tag: "IO1" }
                     ShortcutRow { keys: "Del"; description: "Xoá tấm (đang chọn → xoá tấm đó; không chọn → xoá tấm cuối)"; tag: "IO2" }
-                    ShortcutRow { keys: "Enter"; description: "Tạo phim (cần ≥5 tấm)"; tag: "IO3" }
+                    ShortcutRow { keys: "Enter"; description: "Kết thúc, tạo phim (cần ≥5 tấm)"; tag: "IO3" }
 
                     // --- Section: CapturePage ---
                     SectionHeader { sectionTitle: "Màn Chụp ảnh" }
@@ -139,7 +139,7 @@ Popup {
                     ShortcutRow { keys: "S"; description: "Lưu video" }
                     ShortcutRow { keys: "L"; description: "Sao chép link chia sẻ" }
                     ShortcutRow { keys: "G"; description: "Xem thư viện phim" }
-                    ShortcutRow { keys: "N  Enter"; description: "Làm phim mới" }
+                    ShortcutRow { keys: "N"; description: "Làm phim mới" }
 
                     // Bottom spacer
                     Item { height: N.NeoConstants.spacingS }
