@@ -4,6 +4,37 @@
 
 ---
 
+## [1.0.2] — 2026-08-19
+
+🐞 **Sửa lỗi phát video trên NEO One + hành vi phím Enter.**
+
+### Fixed — sửa lỗi
+
+- **Phim không phát trên NEO One (màn hình đen)** — Qt 6.7 mặc định dùng backend ffmpeg,
+  nhưng `libffmpegmediaplugin.so` trong wheel PyQt6 link `libav*.so.58` (ffmpeg 4.x) còn
+  Debian 12 có `libavcodec.so.59` ⇒ plugin nạp lỗi và Qt **không thử tiếp backend
+  GStreamer** (`No QtMultimedia backends found`). Nay ép `QT_MEDIA_BACKEND=gstreamer`
+  trước khi Qt Multimedia nạp (`src/neo_stopmotion/media_env.py`, no-op trên macOS).
+- **Thiếu gói hệ thống** — thêm `libgstreamer-plugins-bad1.0-0` vào `debian/control`:
+  plugin GStreamer của Qt cần `libgstphotography-1.0.so.0`. (Cố ý dùng gói thư viện
+  thay vì `gstreamer1.0-plugins-bad` để không kéo theo `v4l2slh264dec` của Allwinner —
+  decoder này rank cao hơn `avdec_h264` nhưng lỗi cấp phát bộ đệm; app cũng hạ rank nó
+  để phòng máy đã cài sẵn.)
+- **Phim đứng hình sau vài vòng lặp** — `MediaPlayer.Infinite` kẹt ở `StoppedState` trên
+  backend GStreamer của máy này. Thay bằng vòng lặp tự điều khiển.
+- **Enter không kết thúc làm phim** — trên màn hình kết quả, Enter gọi EXPORT lần nữa và
+  ghép lại chính bộ ảnh cũ; bấm 2 lần lúc đang ghép thì chạy 2 tiến trình ffmpeg song
+  song. Nay EXPORT chỉ chạy đúng một lần cho mỗi phim (chặn ở `AppController` nên nút đỏ
+  ThingBot cũng được bảo vệ); export lỗi thì vẫn bấm lại được.
+
+### Changed — thay đổi
+
+- **Phát phim có nhịp nghỉ** — phim phát xong nghỉ 5 giây rồi tự phát lại, lặp vô hạn.
+  Lúc nghỉ giữ khung hình đầu trên màn hình (không để đen).
+- `MediaPlayer` nay ghi log khi lỗi (`onErrorOccurred`) — trước đây hỏng thì im lặng.
+
+---
+
 ## [1.0.0] — 2026-05-10
 
 🎉 **Bản v1.0 đầu tiên — sẵn sàng pilot tại Làng Maker.**

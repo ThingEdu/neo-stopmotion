@@ -28,11 +28,17 @@ class AppController(QObject):
         self._bus = SignalBus.instance()
         self._frame_count = 0
         self._post_export = False  # True when on SuccessPage
+        self._exporting = False  # True between EXPORT and export_completed/failed
         self._bus.uart_command_received.connect(self.handle_uart_command)
         self._bus.export_completed.connect(self._on_export_completed)
+        self._bus.export_failed.connect(self._on_export_failed)
 
     def _on_export_completed(self, _payload: dict) -> None:
         self._post_export = True
+        self._exporting = False
+
+    def _on_export_failed(self, _message: str) -> None:
+        self._exporting = False
 
     @pyqtProperty(int, notify=frameCountChanged)
     def frameCount(self) -> int:
@@ -84,6 +90,12 @@ class AppController(QObject):
         self._bus.frame_undone.emit(new_count)
 
     def _do_export(self) -> None:
+        if self._exporting:
+            logger.debug('EXPORT ignored - an export is already running')
+            return
+        if self._post_export:
+            logger.debug('EXPORT ignored - film already finished; SHOOT starts a new one')
+            return
         fm = self._session.frame_manager
         if fm.frame_count < self._min_frames:
             self._bus.status_message.emit(
@@ -94,6 +106,7 @@ class AppController(QObject):
         if self._export_service is None:
             logger.warning("Export requested but ExportService not configured")
             return
+        self._exporting = True
         self._export_service.start_export(fm)
 
     @pyqtSlot()
@@ -107,5 +120,6 @@ class AppController(QObject):
         self._capture.reset()
         self._frame_count = 0
         self._post_export = False
+        self._exporting = False
         self.frameCountChanged.emit(0)
         self._bus.session_reset.emit()

@@ -36,7 +36,8 @@ Depends: ${misc:Depends},
  qml6-module-qtmultimedia,
  gstreamer1.0-plugins-base,
  gstreamer1.0-plugins-good,
- gstreamer1.0-libav
+ gstreamer1.0-libav,
+ libgstreamer-plugins-bad1.0-0
 Recommends: v4l-utils,
  qt6-wayland
 Description: Stop-motion animation studio for kids (NEO One / ThingBot)

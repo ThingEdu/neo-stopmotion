@@ -10,6 +10,12 @@ Item {
     property string gifPath: ""
     property string shareUrl: ""
     property string qrPath: ""
+    property bool userPaused: false
+
+    function _scheduleReplay() {
+        if (mp4Path !== "" && !userPaused)
+            replayTimer.restart()
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -77,9 +83,35 @@ Item {
                     source: root.mp4Path !== "" ? "file://" + root.mp4Path : ""
                     videoOutput: vo
                     audioOutput: AudioOutput { volume: 0 }
-                    loops: MediaPlayer.Infinite
                     onSourceChanged: if (root.mp4Path !== "") play()
                     Component.onCompleted: if (root.mp4Path !== "") play()
+
+                    onMediaStatusChanged: {
+                        if (mediaStatus === MediaPlayer.EndOfMedia) {
+                            position = 0
+                            pause()
+                            root._scheduleReplay()
+                        }
+                    }
+                    onPlaybackStateChanged: {
+                        if (playbackState === MediaPlayer.StoppedState && !root.userPaused)
+                            root._scheduleReplay()
+                    }
+                    onErrorOccurred: function(error, errorString) {
+                        console.warn("MediaPlayer error:", error, errorString, "source:", source)
+                    }
+                }
+
+                Timer {
+                    id: replayTimer
+                    interval: 5000
+                    repeat: false
+                    onTriggered: {
+                        if (root.mp4Path === "" || root.userPaused)
+                            return
+                        player.position = 0
+                        player.play()
+                    }
                 }
                 VideoOutput {
                     id: vo
