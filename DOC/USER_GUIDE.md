@@ -49,13 +49,19 @@
 | Nút | Màu | Ý nghĩa | Phím tương đương |
 |---|---|---|---|
 | **IO1** | Xanh lá | Chụp 1 frame | `Space` |
-| **IO2** | Đỏ | Tạo phim từ tất cả frame đã chụp | `Enter` |
+| **IO2** | Đỏ | **Kết thúc làm phim** — ghép tất cả frame đã chụp | `Enter` |
+
+`Enter` (và nút đỏ) chỉ có tác dụng **đúng một lần** cho mỗi phim: bấm thêm lúc đang ghép,
+hoặc bấm ở màn hình kết quả, đều bị bỏ qua — không ghép lại phim cũ, không chạy hai tiến
+trình ffmpeg cùng lúc. Muốn làm phim mới thì bấm **nút xanh / `Space`** (hoặc `N`).
 
 Phím phụ trên bàn phím (Thợ Cả dùng nếu HS bấm sai):
 
 | Phím | Hành động |
 |---|---|
 | `Z` | Xoá frame mới nhất (khi HS không hài lòng frame vừa chụp) |
+| `Space` | Ở màn hình kết quả: bắt đầu phim mới ngay |
+| `N` | Làm phim mới (giống nút "🔁 Làm phim mới" trên màn hình) |
 
 ## 3. Trải nghiệm đầy đủ 25-30 phút
 
@@ -96,7 +102,7 @@ Phím phụ trên bàn phím (Thợ Cả dùng nếu HS bấm sai):
 
 ### Phút 22-25: Tạo phim & xem lại
 
-1. HS bấm **IO2 đỏ** (hoặc Thợ Cả bấm Enter)
+1. HS bấm **IO2 đỏ** (hoặc Thợ Cả bấm Enter) — bấm 1 lần là đủ, bấm nữa không có tác dụng
 2. Màn hình hiện **ExportingPage** với progress bar (~5-10s)
 3. Chuyển sang **SuccessPage**:
    - Phim phát loop (có watermark Maker Việt góc dưới phải)
@@ -163,6 +169,10 @@ Cả hai cách đều giữ phim cũ trong `~/projects/session_*/` (không xoá,
 | Banner amber "Nút bấm tạm nghỉ" | ThingBot rút USB | Cắm lại USB. Banner sẽ chuyển xanh sau 2-4s. Trong lúc đó dùng Space/Enter |
 | Bấm IO1 không có gì xảy ra | Cửa sổ app mất focus | Click vào cửa sổ app trước, rồi thử lại |
 | Nút "🎬 TẠO PHIM" mờ (disabled) | Chưa đủ 5 frame | Bấm IO1 thêm vài lần |
+| Khung phim đen ở màn hình kết quả | Thiếu bộ giải mã video của hệ thống | `sudo apt install gstreamer1.0-libav libgstreamer-plugins-bad1.0-0` rồi mở lại app (xem SYSTEM_GUIDE §4.1) |
+| Phim chỉ chạy 1 lần rồi đứng hình | Bản cũ trước 1.0.2 | Cập nhật lên 1.0.2+: phim tự phát lại sau mỗi 5 giây nghỉ |
+| Cài bản mới nhưng app vẫn như cũ | Bản pip cũ trong `~/.local` che gói .deb | `python3 -c 'import neo_stopmotion; print(neo_stopmotion.__file__)'` — phải ra `/usr/lib/python3/...` |
+| Thẻ nhớ đầy giữa buổi | Kho phim tích lại không được dọn | App 1.0.2+ tự xoá phim cũ nhất khi vượt hạn mức; chỉnh `[storage] max_total_mb` |
 | Export báo lỗi "ffmpeg failed" | ffmpeg chưa cài hoặc binary sai path | `which ffmpeg` trên NEO One; sửa `ffmpeg_binary` trong `~/.config/neostopmotion/config.toml` |
 | QR không quét được | catbox.moe block hoặc mất internet | URL vẫn lưu trong `~/projects/session_*/project.json` (`download_url`); copy ra điện thoại bằng tay |
 | App đóng đột ngột giữa session | Crash (hiếm) | Frame đã chụp vẫn còn trong `~/projects/session_*/frames/`. Bật lại app, copy frames sang session mới rồi export |

@@ -23,3 +23,21 @@ def test_env_override(monkeypatch):
     monkeypatch.setenv("NEO_STOPMOTION_UART_PORT", "/dev/ttyACM0")
     s = load_settings()
     assert s.uart.port == "/dev/ttyACM0"
+
+
+def test_unknown_config_keys_are_ignored_not_fatal(tmp_path):
+    """Config cũ của người dùng còn key đã bỏ (auto_cleanup_threshold_mb) thì app
+    vẫn phải chạy, không được crash TypeError lúc khởi động."""
+    from neo_stopmotion.config.settings import load_settings
+
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(
+        "[storage]\n"
+        "max_total_mb = 500\n"
+        "auto_cleanup_threshold_mb = 100\n"
+        "khong_ton_tai = true\n"
+    )
+
+    settings = load_settings(cfg)
+
+    assert settings.storage.max_total_mb == 500

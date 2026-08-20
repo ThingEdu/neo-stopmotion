@@ -4,6 +4,27 @@
 
 ---
 
+## [Chưa phát hành]
+
+### Added — tính năng mới
+
+- **Hạn mức kho phim (`[storage] max_total_mb`, `max_sessions`)** — mỗi lần khởi động app và
+  mỗi lần mở phim mới, app xoá các phim **cũ nhất** cho tới khi kho phim nằm trong hạn mức.
+  Mặc định 2000 MB / 50 phim; đặt `0` để tắt. Phiên đang quay **không bao giờ** bị xoá, kể cả
+  khi một mình nó đã vượt hạn mức. Trước đây `max_sessions` và `auto_cleanup_threshold_mb` có
+  trong `defaults.toml` nhưng **không có code nào dùng** — máy pilot thật đã tích 35 phiên /
+  343 MB, một phiên nặng 162 MB, và không gì dọn.
+
+### Fixed — sửa lỗi
+
+- **Hai phim tạo trong cùng một giây dùng chung thư mục** — id phiên chỉ tới giây nên phim mới
+  ghi đè frame của phim cũ. Nay thêm hậu tố cho tới khi tên thư mục còn trống.
+- **Config cũ làm app không khởi động được** — `load_settings()` nay bỏ qua (và cảnh báo) các
+  key không còn dùng thay vì ném `TypeError`. Một thiết bị đang ở lớp học không được phép chết
+  vì file config viết cho bản cũ.
+
+---
+
 ## [1.0.2] — 2026-08-19
 
 🐞 **Sửa lỗi phát video trên NEO One + hành vi phím Enter.**

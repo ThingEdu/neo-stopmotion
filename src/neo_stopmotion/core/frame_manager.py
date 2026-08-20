@@ -16,7 +16,15 @@ class FrameManager:
     def __init__(self, projects_dir: Path, fps_playback: int = 10) -> None:
         self.projects_dir = Path(projects_dir)
         self.projects_dir.mkdir(parents=True, exist_ok=True)
+        # Session id is second-resolution, so two films started inside the same
+        # second would share a directory and the new one would overwrite the old
+        # one's frames. Suffix until the name is free.
         session_id = datetime.now().strftime("%Y_%m_%d_%H%M%S")
+        base_id = session_id
+        attempt = 2
+        while (self.projects_dir / f"session_{session_id}").exists():
+            session_id = f"{base_id}_{attempt}"
+            attempt += 1
         self.session_dir = self.projects_dir / f"session_{session_id}"
         self.frames_dir = self.session_dir / "frames"
         self.frames_dir.mkdir(parents=True, exist_ok=True)
