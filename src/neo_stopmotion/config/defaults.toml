@@ -29,8 +29,10 @@ ffmpeg_binary = "ffmpeg"
 
 [storage]
 projects_dir = "/home/maker/projects"
+# Hạn mức kho phim. Vượt thì xoá phim CŨ NHẤT trước; phiên đang quay không bao giờ
+# bị xoá. Đặt 0 để tắt hạn mức tương ứng.
 max_sessions = 50
-auto_cleanup_threshold_mb = 100
+max_total_mb = 2000
 
 [server]
 http_port = 8000

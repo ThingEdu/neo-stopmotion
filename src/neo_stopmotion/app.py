@@ -2,10 +2,11 @@ import os
 import shutil
 import sys
 from pathlib import Path
+
+from loguru import logger
 from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtQml import QQmlApplicationEngine
-from loguru import logger
 
 from neo_stopmotion.config.settings import AppSettings, load_settings
 from neo_stopmotion.core.capture_engine import CaptureEngine, CaptureError
@@ -151,7 +152,11 @@ def run() -> int:
     session = SessionService(
         projects_dir=projects_dir,
         fps_playback=settings.export.playback_fps,
+        max_total_mb=settings.storage.max_total_mb,
+        max_sessions=settings.storage.max_sessions,
     )
+    # Dọn ngay lúc khởi động: máy có thể đã đầy từ phiên trước.
+    session.enforce_storage_quota()
 
     ffmpeg_bin = _resolve_ffmpeg(settings.export.ffmpeg_binary)
     watermark = Path(__file__).parent / "resources" / "images" / "maker_viet_logo.png"

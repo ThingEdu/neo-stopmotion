@@ -1,5 +1,18 @@
 # NeoStopMotion — Tài liệu Kiến trúc & Kế hoạch Triển khai
 
+> **Cập nhật 2026-08-20 (v1.0.2).** Tài liệu này là bản thiết kế gốc; một số phần đã lệch
+> so với code (`ShareServer` cục bộ đã thay bằng `CloudUploader`; `ThumbnailStrip`,
+> `CountdownOverlay`, `NeoAudio` chưa tồn tại). **Tin code trong `src/` hơn tài liệu này.**
+> Ba thay đổi kiến trúc mới nhất, đã kiểm chứng trên NEO One thật:
+>
+> | Thành phần | Vai trò |
+> |---|---|
+> | `core/media_env.py`* | Ép `QT_MEDIA_BACKEND=gstreamer` + hạ rank `v4l2slh264dec` trước khi Qt Multimedia nạp. Không có nó thì Qt 6.7 không nạp được backend nào và phim đen. Xem `DOC/SYSTEM_GUIDE.md` §4.1. |
+> | `core/storage_janitor.py` | Hạn mức kho phim: xoá phim cũ nhất khi vượt `max_total_mb` / `max_sessions`, không bao giờ đụng phiên đang quay. Xem SYSTEM_GUIDE §4.2. |
+> | `AppController._exporting` | EXPORT chỉ chạy đúng 1 lần cho mỗi phim (chặn cả bàn phím lẫn nút đỏ ThingBot). |
+>
+> \* thực tế nằm ở `src/neo_stopmotion/media_env.py` (ngang cấp `app.py`, vì phải import được trước Qt).
+
 > **Phiên bản:** 0.1.0 (Design)
 > **Tổ chức:** Maker Việt × Dế Foundation — ThingEdu
 > **Ngày soạn:** 2026-05-09
@@ -67,7 +80,7 @@
 |    │     ├── HintBar.qml                                       |
 |    │     └── CountdownOverlay.qml (3-2-1)                      |
 |    ├── ExportingPage.qml       (loading khi ghép video)        |
-|    └── SuccessPage.qml         (QR + replay loop)              |
+|    └── SuccessPage.qml         (QR + phát lại, nghỉ 5s mỗi vòng)|
 |                                                                |
 |  Singletons (Global state, kế thừa pattern NEOSTEM):           |
 |    ├── NeoConstants.qml  (design tokens — màu, font, anim)     |
@@ -143,6 +156,7 @@ NeoStopMotion/
 │       │
 │       ├── __init__.py         # Version: 0.1.0
 │       ├── __main__.py         # Entry: python -m neo_stopmotion
+│       ├── media_env.py        # Chọn backend Qt Multimedia (chạy TRƯỚC khi Qt nạp)
 │       ├── app.py              # QApplication + QmlEngine init
 │       │
 │       ├── config/             # [Cấu hình]

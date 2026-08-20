@@ -99,6 +99,20 @@ journalctl -u neostopmotion -f   # theo dõi log
 
 Xem `firmware/thingbot_stopmotion/README.md` cho hướng dẫn nối dây + flash bằng PlatformIO hoặc Arduino IDE.
 
+### Cạm bẫy khi nâng cấp: bản pip cũ che gói .deb
+
+Máy từng cài bằng pip (`~/.local/lib/pythonX/site-packages`) sẽ **che gói hệ thống**: python
+tìm `~/.local` **trước** `/usr/lib/python3/dist-packages`, nên `/usr/bin/neo-stopmotion` vẫn
+`import` code CŨ trong khi `dpkg -s` báo đã cài bản mới — mọi bản vá vô hiệu một cách âm thầm.
+
+Installer từ bản 2026-08-20 tự dọn đúng home của người dùng desktop (`SUDO_USER`) thay vì
+`/root`, và cảnh báo nếu còn bản cài venv cũ. Kiểm tra tay:
+
+```bash
+python3 -c 'import neo_stopmotion; print(neo_stopmotion.__file__, neo_stopmotion.__version__)'
+# phải ra /usr/lib/python3/dist-packages/... — nếu ra /home/<user>/.local thì gói đang bị che
+```
+
 ## 4. Cấu hình
 
 3 lớp ưu tiên (cao thắng thấp):
@@ -126,6 +140,8 @@ min_frames = 5             # phải có ít nhất 5 frame mới enable nút T�
 
 [storage]
 projects_dir = "/home/maker/projects"
+max_total_mb = 2000        # hạn mức kho phim; vượt thì xoá phim CŨ NHẤT trước (0 = tắt)
+max_sessions = 50          # trần số phim giữ lại (0 = tắt)
 
 [ui]
 fullscreen = true          # production: true; dev: false để có thể đóng cửa sổ
@@ -143,6 +159,51 @@ fullscreen = true          # production: true; dev: false để có thể đóng
 | `NEO_STOPMOTION_DEBUG` | `1` / `true` | Log level DEBUG (mặc định INFO) |
 | `NEO_STOPMOTION_PROJECTS_DIR` | path | Override `[storage] projects_dir` |
 | `NEO_STOPMOTION_WEBCAM_INDEX` | số nguyên | Override `[capture] webcam_index` |
+| `QT_MEDIA_BACKEND` | `gstreamer` / `ffmpeg` | App tự đặt `gstreamer` trên Linux (xem §4.1). Đặt tay để ghi đè |
+| `GST_PLUGIN_FEATURE_RANK` | vd `v4l2slh264dec:NONE` | App tự hạ rank decoder phần cứng lỗi trên NEO One |
+
+### 4.1 Backend phát video trên Linux (bắt buộc hiểu khi debug "phim đen")
+
+`src/neo_stopmotion/media_env.py` chạy **trước khi Qt Multimedia nạp** và đặt:
+
+| Biến | Giá trị | Vì sao |
+|---|---|---|
+| `QT_MEDIA_BACKEND` | `gstreamer` | Qt 6.7 mặc định chọn backend **ffmpeg**, nhưng `libffmpegmediaplugin.so` trong wheel PyQt6 link `libav*.so.58` (ffmpeg 4.x) còn Debian 12 có `libavcodec.so.59`. Plugin nạp lỗi và **Qt bỏ cuộc luôn, không thử tiếp plugin gstreamer** ⇒ `No QtMultimedia backends found`, khung phim đen. |
+| `GST_PLUGIN_FEATURE_RANK` | `v4l2slh264dec:NONE` | Decoder H.264 phần cứng Allwinner có rank 257 > `avdec_h264` (256) nên được ưu tiên, nhưng lỗi cấp phát bộ đệm ⇒ "Internal data stream error". |
+
+Cả hai dùng `setdefault` nên vẫn ghi đè được từ ngoài. No-op trên macOS (AVFoundation giải mã H.264 sẵn).
+
+Gói apt bắt buộc (đã khai trong `debian/control`):
+
+- `gstreamer1.0-libav` — cấp `avdec_h264`, decoder H.264 duy nhất có trên ảnh NEO One gốc.
+- `libgstreamer-plugins-bad1.0-0` — cấp `libgstphotography-1.0.so.0` mà plugin GStreamer của Qt link tới. **Cố ý dùng gói thư viện, KHÔNG dùng `gstreamer1.0-plugins-bad`**: bộ plugin đó kéo theo chính `v4l2slh264dec` hỏng ở trên.
+
+Lệnh chẩn đoán nhanh trên máy:
+
+```bash
+gst-inspect-1.0 avdec_h264 | head -3                       # có decoder mềm chưa?
+gst-launch-1.0 playbin uri=file:///…/output.mp4 \
+  video-sink=fakesink audio-sink=fakesink                  # chạy tới EOS là OK
+python3 -c 'import neo_stopmotion; print(neo_stopmotion.__file__)'   # đang chạy code nào
+```
+
+### 4.2 Hạn mức kho phim (tự dọn phim cũ)
+
+`core/storage_janitor.py`. Mỗi lần **khởi động app** và mỗi lần **mở phim mới**, app tính tổng dung lượng `projects_dir` rồi xoá các phim **cũ nhất** cho tới khi thoả cả hai hạn mức `max_total_mb` và `max_sessions`.
+
+Nguyên tắc:
+
+- Thứ tự xoá theo **timestamp trong tên thư mục** (`session_%Y_%m_%d_%H%M%S`), không theo mtime — mtime bị mọi thao tác sao lưu ghi đè.
+- **Phiên đang quay không bao giờ bị xoá**, kể cả khi một mình nó đã vượt hạn mức. Thà đầy thẻ còn hơn xoá phim của đứa trẻ đang quay dở.
+- Một thư mục không xoá được (quyền, đang mở) chỉ ghi cảnh báo rồi bỏ qua, không chặn phần còn lại.
+- `0` nghĩa là **tắt hạn mức**, không phải "xoá sạch".
+
+Vì sao cần: frame lưu PNG full-res, một phiên quay dài có thể **>150 MB**. Máy pilot thực tế tích 35 phiên = 343 MB mà không có gì dọn; thẻ đầy thì lỗi hiện ra đúng lúc trẻ đang chụp.
+
+```bash
+# xem kho phim đang chiếm bao nhiêu
+du -sh ~/neostopmotion_sessions && ls -d ~/neostopmotion_sessions/session_* | wc -l
+```
 
 ### Logs
 

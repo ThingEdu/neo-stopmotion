@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 import os
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
 
+from loguru import logger
 
 DEFAULTS_PATH = Path(__file__).parent / "defaults.toml"
 
@@ -55,7 +57,7 @@ class ExportCfg:
 class StorageCfg:
     projects_dir: str = "/home/maker/projects"
     max_sessions: int = 50
-    auto_cleanup_threshold_mb: int = 100
+    max_total_mb: float = 2000
 
 
 @dataclass
@@ -121,6 +123,25 @@ def _apply_env(data: dict[str, Any]) -> dict[str, Any]:
         data.setdefault(section, {})[key] = cast(os.environ[env])
     return data
 
+_T = TypeVar("_T")
+
+
+def _build(cls: type[_T], section: dict[str, Any]) -> _T:
+    """Build a config dataclass, ignoring keys it does not know about.
+
+    A user's config.toml outlives the code: keys get renamed or dropped between
+    versions (auto_cleanup_threshold_mb -> max_total_mb). Passing an unknown key
+    straight into the dataclass raises TypeError and the app never starts, which
+    is a terrible failure mode for a device sitting in a classroom.
+    """
+    known = {f.name for f in fields(cls)}
+    unknown = set(section) - known
+    if unknown:
+        logger.warning(
+            f"Bỏ qua thiết lập không còn dùng trong [{cls.__name__}]: {', '.join(sorted(unknown))}"
+        )
+    return cls(**{k: v for k, v in section.items() if k in known})
+
 
 def load_settings(user_config_path: Path | None = None) -> AppSettings:
     data = _read_toml(DEFAULTS_PATH)
@@ -132,11 +153,11 @@ def load_settings(user_config_path: Path | None = None) -> AppSettings:
             data = _merge(data, _read_toml(default_user))
     data = _apply_env(data)
     return AppSettings(
-        app=AppCfg(**data.get("app", {})),
-        capture=CaptureCfg(**data.get("capture", {})),
-        uart=UartCfg(**data.get("uart", {})),
-        export=ExportCfg(**data.get("export", {})),
-        storage=StorageCfg(**data.get("storage", {})),
-        server=ServerCfg(**data.get("server", {})),
-        ui=UiCfg(**data.get("ui", {})),
+        app=_build(AppCfg, data.get("app", {})),
+        capture=_build(CaptureCfg, data.get("capture", {})),
+        uart=_build(UartCfg, data.get("uart", {})),
+        export=_build(ExportCfg, data.get("export", {})),
+        storage=_build(StorageCfg, data.get("storage", {})),
+        server=_build(ServerCfg, data.get("server", {})),
+        ui=_build(UiCfg, data.get("ui", {})),
     )
